@@ -5,13 +5,33 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch",
+            "name": "Launch run",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/main.go",
             "env": {},
-            "args": ["-file","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/provision.yaml"]
+            "args": ["-controlNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/controlnodes.yaml",
+                "-configNodes", "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/confignodes.yaml",
+                "-analyticsNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/analyticsnodes.yaml",
+                "-vrouterNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/vrouternodes.yaml",
+                "-apiserver", "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/apiserver.yaml",
+                "-mode","run"]
+        },
+        {
+            "name": "Launch watch",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/main.go",
+            "env": {},
+            "args": ["-dir","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config",
+                "-controlNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/controlnodes.yaml",
+                "-configNodes", "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/confignodes.yaml",
+                "-analyticsNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/analyticsnodes.yaml",
+                "-vrouterNodes","/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/vrouternodes.yaml",
+                "-apiserver", "/Users/mhenkel/go/src/github.com/michaelhenkel/contrail-provisioner/config/apiserver.yaml",
+                "-mode","watch"]
         }
     ]
 }
