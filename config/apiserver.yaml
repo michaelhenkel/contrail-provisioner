@@ -1,8 +1,10 @@
 encryption:
-# ca: /Users/mhenkel/kca.crt
-# cert: /Users/mhenkel/kcert.crt
-# key: /Users/mhenkel/kkey.pem
-  insecure: true
+  ca: /Users/mhenkel/kca.crt
+  cert: /Users/mhenkel/kcert.crt
+  key: /Users/mhenkel/kkey.pem
+  insecure: false
 apiServerList:
-- 10.87.64.32
+- 10.87.64.36
+- 10.87.64.33
+- 10.87.64.31
 apiPort: "8082"

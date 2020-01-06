@@ -1,16 +1,18 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/radovskyb/watcher"
 	"gopkg.in/yaml.v2"
 
 	contrail "github.com/Juniper/contrail-go-api"
@@ -65,6 +67,58 @@ type VrouterNode struct {
 	Hostname  string `yaml:"hostname,omitempty"`
 }
 
+func nodeManager(nodesPtr *string, nodeType string, contrailClient *contrail.Client) {
+	fmt.Printf("%s %s updated\n", nodeType, *nodesPtr)
+	nodeYaml, err := ioutil.ReadFile(*nodesPtr)
+	if err != nil {
+		panic(err)
+	}
+	switch nodeType {
+	case "control":
+		var nodeList []*ControlNode
+		err = yaml.Unmarshal(nodeYaml, &nodeList)
+		if err != nil {
+			panic(err)
+		}
+		if err = controlNodes(contrailClient, nodeList); err != nil {
+			panic(err)
+		}
+	case "analytics":
+		var nodeList []*AnalyticsNode
+		err = yaml.Unmarshal(nodeYaml, &nodeList)
+		if err != nil {
+			panic(err)
+		}
+		if err = analyticsNodes(contrailClient, nodeList); err != nil {
+			panic(err)
+		}
+	case "config":
+		var nodeList []*ConfigNode
+		err = yaml.Unmarshal(nodeYaml, &nodeList)
+		if err != nil {
+			panic(err)
+		}
+		if err = configNodes(contrailClient, nodeList); err != nil {
+			panic(err)
+		}
+	case "vrouter":
+		var nodeList []*VrouterNode
+		err = yaml.Unmarshal(nodeYaml, &nodeList)
+		if err != nil {
+			panic(err)
+		}
+		if err = vrouterNodes(contrailClient, nodeList); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+}
+
 func main() {
 	//if len(os.Args) != 1 {
 	//	panic("wrong number of args")
@@ -75,158 +129,148 @@ func main() {
 	vrouterNodesPtr := flag.String("vrouterNodes", "/provision.yaml", "path to vrouter nodes yaml file")
 	apiserverPtr := flag.String("apiserver", "/provision.yaml", "path to apiserver yaml file")
 	directoryPtr := flag.String("dir", "/config", "path to watch for config files")
+	fmt.Println(*directoryPtr)
 	modePtr := flag.String("mode", "watch", "watch/run")
 	flag.Parse()
+	//controlNodesTarget, err := filepath.EvalSymlinks(*controlNodesPtr)
+	//if err != nil {
+	//	panic(err)
+	//}
 	if *modePtr == "watch" {
-		w := watcher.New()
-		w.SetMaxEvents(2)
-		//w.FilterOps(watcher.Write, watcher.Create)
-		go func() {
-			for {
-				select {
-				case event := <-w.Event:
-					fmt.Println(event)
-					if !event.IsDir() && (event.Op.String() == "WRITE" || event.Op.String() == "CREATE" || event.Op.String() == "RENAME") {
-						//fmt.Println(event.Path + "/" + event.FileInfo.Name()) // Print the event's info.
-						//fmt.Println(event.Op)
-						var apiServer APIServer
-						apiServerYaml, err := ioutil.ReadFile(*apiserverPtr)
-						if err != nil {
-							panic(err)
-						}
-						err = yaml.Unmarshal(apiServerYaml, &apiServer)
-						if err != nil {
-							panic(err)
-						}
-						contrailClient, err := getAPIClient(&apiServer)
-						if err != nil {
-							panic(err.Error())
-						}
 
-						if controlNodesPtr != nil {
-							fileInfo, err := os.Stat(*controlNodesPtr)
-							if !os.IsNotExist(err) {
-								if event.Name() == fileInfo.Name() {
-									var controlNodeList []*ControlNode
-									controlNodeYaml, err := ioutil.ReadFile(*controlNodesPtr)
-									if err != nil {
-										panic(err)
-									}
-									err = yaml.Unmarshal(controlNodeYaml, &controlNodeList)
-									if err != nil {
-										panic(err)
-									}
-									if err = controlNodes(contrailClient, controlNodeList); err != nil {
-										panic(err)
-									}
-								}
-							}
-						}
-
-						if configNodesPtr != nil {
-							fileInfo, err := os.Stat(*configNodesPtr)
-							if !os.IsNotExist(err) {
-								if event.Name() == fileInfo.Name() {
-									var configNodeList []*ConfigNode
-									configNodeYaml, err := ioutil.ReadFile(*configNodesPtr)
-									if err != nil {
-										panic(err)
-									}
-									err = yaml.Unmarshal(configNodeYaml, &configNodeList)
-									if err != nil {
-										panic(err)
-									}
-									if err = configNodes(contrailClient, configNodeList); err != nil {
-										panic(err)
-									}
-								}
-							}
-						}
-
-						if analyticsNodesPtr != nil {
-							fileInfo, err := os.Stat(*analyticsNodesPtr)
-							if !os.IsNotExist(err) {
-								if event.Name() == fileInfo.Name() {
-									var analyticsNodeList []*AnalyticsNode
-									analyticsNodeYaml, err := ioutil.ReadFile(*analyticsNodesPtr)
-									if err != nil {
-										panic(err)
-									}
-									err = yaml.Unmarshal(analyticsNodeYaml, &analyticsNodeList)
-									if err != nil {
-										panic(err)
-									}
-									if err = analyticsNodes(contrailClient, analyticsNodeList); err != nil {
-										panic(err)
-									}
-								}
-							}
-						}
-
-						if vrouterNodesPtr != nil {
-							fileInfo, err := os.Stat(*vrouterNodesPtr)
-							if !os.IsNotExist(err) {
-								if event.Name() == fileInfo.Name() {
-									var vrouterNodeList []*VrouterNode
-									vrouterNodeYaml, err := ioutil.ReadFile(*vrouterNodesPtr)
-									if err != nil {
-										panic(err)
-									}
-									err = yaml.Unmarshal(vrouterNodeYaml, &vrouterNodeList)
-									if err != nil {
-										panic(err)
-									}
-									if err = vrouterNodes(contrailClient, vrouterNodeList); err != nil {
-										panic(err)
-									}
-								}
-							}
-						}
-					}
-				case err := <-w.Error:
-					panic(err)
-				case <-w.Closed:
-					return
-				}
-			}
-		}()
-		if err := w.Add(*directoryPtr); err != nil {
+		var apiServer APIServer
+		apiServerYaml, err := ioutil.ReadFile(*apiserverPtr)
+		if err != nil {
 			panic(err)
 		}
-		for path, f := range w.WatchedFiles() {
-			fmt.Printf("%s: %s\n", path, f.Name())
-		}
-		fmt.Println()
-		go func() {
-			w.Wait()
-			if controlNodesPtr != nil {
-				fileInfo, err := os.Stat(*controlNodesPtr)
-				if !os.IsNotExist(err) {
-					w.TriggerEvent(watcher.Write, fileInfo)
-				}
-			}
-			if configNodesPtr != nil {
-				fileInfo, err := os.Stat(*configNodesPtr)
-				if !os.IsNotExist(err) {
-					w.TriggerEvent(watcher.Write, fileInfo)
-				}
-			}
-			if analyticsNodesPtr != nil {
-				fileInfo, err := os.Stat(*analyticsNodesPtr)
-				if !os.IsNotExist(err) {
-					w.TriggerEvent(watcher.Write, fileInfo)
-				}
-			}
-			if vrouterNodesPtr != nil {
-				fileInfo, err := os.Stat(*vrouterNodesPtr)
-				if !os.IsNotExist(err) {
-					w.TriggerEvent(watcher.Write, fileInfo)
-				}
-			}
-		}()
-		if err := w.Start(time.Millisecond * 100); err != nil {
+		err = yaml.Unmarshal(apiServerYaml, &apiServer)
+		if err != nil {
 			panic(err)
 		}
+
+		var contrailClient *contrail.Client
+		err = retry(5, 10*time.Second, func() (err error) {
+			contrailClient, err = getAPIClient(&apiServer)
+			return
+		})
+		if err != nil {
+			if !connectionError(err) {
+				panic(err)
+			}
+		}
+
+		fmt.Println("start watcher")
+		done := make(chan bool)
+
+		if controlNodesPtr != nil {
+			fmt.Println("intial control node run")
+			_, err := os.Stat(*controlNodesPtr)
+			if !os.IsNotExist(err) {
+				nodeManager(controlNodesPtr, "control", contrailClient)
+			} else if os.IsNotExist(err) {
+				controlNodes(contrailClient, []*ControlNode{})
+			}
+			fmt.Println("setting up control node watcher")
+			watchFile := strings.Split(*controlNodesPtr, "/")
+			watchPath := strings.TrimSuffix(*controlNodesPtr, watchFile[len(watchFile)-1])
+			nodeWatcher, err := WatchFile(watchPath, time.Second, func() {
+				fmt.Println("control node event")
+				_, err := os.Stat(*controlNodesPtr)
+				if !os.IsNotExist(err) {
+					nodeManager(controlNodesPtr, "control", contrailClient)
+				} else if os.IsNotExist(err) {
+					controlNodes(contrailClient, []*ControlNode{})
+				}
+			})
+			check(err)
+
+			defer func() {
+				nodeWatcher.Close()
+			}()
+
+		}
+
+		if vrouterNodesPtr != nil {
+			fmt.Println("intial vrouter node run")
+			_, err := os.Stat(*vrouterNodesPtr)
+			if !os.IsNotExist(err) {
+				nodeManager(vrouterNodesPtr, "vrouter", contrailClient)
+			} else if os.IsNotExist(err) {
+				vrouterNodes(contrailClient, []*VrouterNode{})
+			}
+			fmt.Println("setting up vrouter node watcher")
+			watchFile := strings.Split(*vrouterNodesPtr, "/")
+			watchPath := strings.TrimSuffix(*vrouterNodesPtr, watchFile[len(watchFile)-1])
+			nodeWatcher, err := WatchFile(watchPath, time.Second, func() {
+				fmt.Println("vrouter node event")
+				_, err := os.Stat(*vrouterNodesPtr)
+				if !os.IsNotExist(err) {
+					nodeManager(vrouterNodesPtr, "vrouter", contrailClient)
+				} else if os.IsNotExist(err) {
+					vrouterNodes(contrailClient, []*VrouterNode{})
+				}
+			})
+			check(err)
+
+			defer func() {
+				nodeWatcher.Close()
+			}()
+		}
+
+		if analyticsNodesPtr != nil {
+			fmt.Println("intial analytics node run")
+			_, err := os.Stat(*analyticsNodesPtr)
+			if !os.IsNotExist(err) {
+				nodeManager(analyticsNodesPtr, "analytics", contrailClient)
+			} else if os.IsNotExist(err) {
+				analyticsNodes(contrailClient, []*AnalyticsNode{})
+			}
+			fmt.Println("setting up analytics node watcher")
+			watchFile := strings.Split(*analyticsNodesPtr, "/")
+			watchPath := strings.TrimSuffix(*analyticsNodesPtr, watchFile[len(watchFile)-1])
+			nodeWatcher, err := WatchFile(watchPath, time.Second, func() {
+				fmt.Println("analytics node event")
+				_, err := os.Stat(*analyticsNodesPtr)
+				if !os.IsNotExist(err) {
+					nodeManager(analyticsNodesPtr, "analytics", contrailClient)
+				} else if os.IsNotExist(err) {
+					analyticsNodes(contrailClient, []*AnalyticsNode{})
+				}
+			})
+			check(err)
+
+			defer func() {
+				nodeWatcher.Close()
+			}()
+		}
+
+		if configNodesPtr != nil {
+			fmt.Println("intial config node run")
+			_, err := os.Stat(*configNodesPtr)
+			if !os.IsNotExist(err) {
+				nodeManager(configNodesPtr, "config", contrailClient)
+			} else if os.IsNotExist(err) {
+				configNodes(contrailClient, []*ConfigNode{})
+			}
+			fmt.Println("setting up config node watcher")
+			watchFile := strings.Split(*configNodesPtr, "/")
+			watchPath := strings.TrimSuffix(*configNodesPtr, watchFile[len(watchFile)-1])
+			nodeWatcher, err := WatchFile(watchPath, time.Second, func() {
+				fmt.Println("config node event")
+				_, err := os.Stat(*configNodesPtr)
+				if !os.IsNotExist(err) {
+					nodeManager(configNodesPtr, "config", contrailClient)
+				} else if os.IsNotExist(err) {
+					configNodes(contrailClient, []*ConfigNode{})
+				}
+			})
+			check(err)
+
+			defer func() {
+				nodeWatcher.Close()
+			}()
+		}
+		<-done
 	}
 
 	if *modePtr == "run" {
@@ -308,34 +352,55 @@ func main() {
 
 	}
 }
+func retry(attempts int, sleep time.Duration, f func() error) (err error) {
+	for i := 0; ; i++ {
+		err = f()
+		if err == nil {
+			return
+		}
+		if attempts != 0 {
+			if i >= (attempts - 1) {
+				break
+			}
+		}
 
-func checkErr(err error) {
+		time.Sleep(sleep)
+
+		fmt.Println("retrying after error:", err)
+	}
+	return err
+}
+
+func connectionError(err error) bool {
 	if err == nil {
 		fmt.Println("Ok")
-		return
+		return false
 
 	} else if netError, ok := err.(net.Error); ok && netError.Timeout() {
 		fmt.Println("Timeout")
-		return
+		return true
 	}
-
-	switch t := err.(type) {
+	unwrappedError := errors.Unwrap(err)
+	switch t := unwrappedError.(type) {
 	case *net.OpError:
 		if t.Op == "dial" {
 			fmt.Println("Unknown host")
+			return true
 		} else if t.Op == "read" {
 			fmt.Println("Connection refused")
+			return true
 		}
 
 	case syscall.Errno:
 		if t == syscall.ECONNREFUSED {
 			fmt.Println("Connection refused")
+			return true
 		}
 
 	default:
 		fmt.Println(t)
 	}
-
+	return false
 }
 
 func fileExists(filename string) bool {
@@ -348,21 +413,32 @@ func fileExists(filename string) bool {
 
 func getAPIClient(apiServerObj *APIServer) (*contrail.Client, error) {
 	var contrailClient *contrail.Client
-	apiPortInt, err := strconv.Atoi(apiServerObj.APIPort)
+	/*apiPortInt, err := strconv.Atoi(apiServerObj.APIPort)
 	if err != nil {
 		return contrailClient, err
 	}
+	*/
 	for _, apiServer := range apiServerObj.APIServerList {
-		contrailClient := contrail.NewClient(apiServer, apiPortInt)
-		contrailClient.AddEncryption(apiServerObj.Encryption.CA, apiServerObj.Encryption.Key, apiServerObj.Encryption.Cert, true)
-		_, err = contrailClient.List("test")
+		apiServerSlice := strings.Split(apiServer, ":")
+		apiPortInt, err := strconv.Atoi(apiServerSlice[1])
 		if err != nil {
-			checkErr(err)
-		} else {
+			return contrailClient, err
+		}
+		fmt.Printf("api server %s:%d\n", apiServerSlice[0], apiPortInt)
+		contrailClient := contrail.NewClient(apiServerSlice[0], apiPortInt)
+		contrailClient.AddEncryption(apiServerObj.Encryption.CA, apiServerObj.Encryption.Key, apiServerObj.Encryption.Cert, true)
+		contrailClient.AddHTTPParameter(1)
+		_, err = contrailClient.List("global-system-config")
+		if err == nil {
 			return contrailClient, nil
 		}
 	}
-	return contrailClient, nil
+	/*
+		if connectionError(err) {
+			return contrailClient, err
+		}
+	*/
+	return contrailClient, fmt.Errorf("%s", "cannot get api server")
 
 }
 
@@ -748,7 +824,7 @@ func (c *AnalyticsNode) Create(nodeList []*AnalyticsNode, nodeName string, contr
 	for _, node := range nodeList {
 		if node.Hostname == nodeName {
 			vncNode := &contrailTypes.AnalyticsNode{}
-			vncNode.SetFQName("", []string{"default-domain", "default-project", "ip-fabric", "__default__", nodeName})
+			vncNode.SetFQName("", []string{"default-global-system-config", nodeName})
 			vncNode.SetAnalyticsNodeIpAddress(node.IPAddress)
 			err := contrailClient.Create(vncNode)
 			if err != nil {
@@ -773,7 +849,7 @@ func (c *AnalyticsNode) Update(nodeList []*AnalyticsNode, nodeName string, contr
 				}
 				typedNode := obj.(*contrailTypes.AnalyticsNode)
 				if typedNode.GetName() == nodeName {
-					typedNode.SetFQName("", []string{"default-domain", "default-project", "ip-fabric", "__default__", nodeName})
+					typedNode.SetFQName("", []string{"default-global-system-config", nodeName})
 					typedNode.SetAnalyticsNodeIpAddress(node.IPAddress)
 					err := contrailClient.Update(typedNode)
 					if err != nil {
@@ -869,7 +945,7 @@ func vrouterNodes(contrailClient *contrail.Client, nodeList []*VrouterNode) erro
 				}
 			}
 		case "delete":
-			node := &ConfigNode{}
+			node := &VrouterNode{}
 			err = node.Delete(k, contrailClient)
 			if err != nil {
 				return err
