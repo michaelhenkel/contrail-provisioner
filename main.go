@@ -22,8 +22,12 @@ import (
 
 // ProvisionConfig defines the structure of the provison config
 type ProvisionConfig struct {
-	Nodes     *Nodes     `yaml:"nodes,omitempty"`
-	APIServer *APIServer `yaml:"apiServer,omitempty"`
+	Nodes        *Nodes        `yaml:"nodes,omitempty"`
+	GlobalConfig *GlobalConfig `yaml:"globalConfig,omitempty"`
+	APIServer    *APIServer    `yaml:"apiServer,omitempty"`
+}
+
+type GlobalConfig struct {
 }
 
 type Nodes struct {
@@ -114,6 +118,10 @@ func nodeManager(nodesPtr *string, nodeType string, contrailClient *contrail.Cli
 	}
 }
 
+func globalConfigManager(globalConfigPtr *string, contrailClient *contrail.Client) {
+
+}
+
 func check(err error) {
 	if err != nil {
 		log.Fatalf("error: %v", err)
@@ -129,6 +137,7 @@ func main() {
 	analyticsNodesPtr := flag.String("analyticsNodes", "/provision.yaml", "path to analytics nodes yaml file")
 	vrouterNodesPtr := flag.String("vrouterNodes", "/provision.yaml", "path to vrouter nodes yaml file")
 	apiserverPtr := flag.String("apiserver", "/provision.yaml", "path to apiserver yaml file")
+	globalConfigPtr := flag.String("globalconfig", "/globalconfig.yaml", "path to globalconfig yaml file")
 	directoryPtr := flag.String("dir", "/config", "path to watch for config files")
 	fmt.Println(*directoryPtr)
 	modePtr := flag.String("mode", "watch", "watch/run")
@@ -163,6 +172,33 @@ func main() {
 		fmt.Println("start watcher")
 		done := make(chan bool)
 
+		if globalConfigPtr != nil {
+			fmt.Println("intial global config run")
+			_, err := os.Stat(*globalConfigPtr)
+			if !os.IsNotExist(err) {
+				globalConfigManager(controlNodesPtr, contrailClient)
+			} else if os.IsNotExist(err) {
+				globalConfig(contrailClient, &GlobalConfig{})
+			}
+			fmt.Println("setting up global config watcher")
+			watchFile := strings.Split(*globalConfigPtr, "/")
+			watchPath := strings.TrimSuffix(*globalConfigPtr, watchFile[len(watchFile)-1])
+			nodeWatcher, err := WatchFile(watchPath, time.Second, func() {
+				fmt.Println("global config event")
+				_, err := os.Stat(*globalConfigPtr)
+				if !os.IsNotExist(err) {
+					globalConfigManager(controlNodesPtr, contrailClient)
+				} else if os.IsNotExist(err) {
+					globalConfig(contrailClient, &GlobalConfig{})
+				}
+			})
+			check(err)
+
+			defer func() {
+				nodeWatcher.Close()
+			}()
+		}
+
 		if controlNodesPtr != nil {
 			fmt.Println("intial control node run")
 			_, err := os.Stat(*controlNodesPtr)
@@ -188,7 +224,6 @@ func main() {
 			defer func() {
 				nodeWatcher.Close()
 			}()
-
 		}
 
 		if vrouterNodesPtr != nil {
@@ -301,7 +336,16 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			if err = controlNodes(contrailClient, controlNodeList); err != nil {
+			/*
+				if err = controlNodes(contrailClient, controlNodeList); err != nil {
+					panic(err)
+				}
+			*/
+			err = retry(5, 10*time.Second, func() (err error) {
+				err = controlNodes(contrailClient, controlNodeList)
+				return
+			})
+			if err != nil {
 				panic(err)
 			}
 		}
@@ -441,6 +485,10 @@ func getAPIClient(apiServerObj *APIServer) (*contrail.Client, error) {
 	*/
 	return contrailClient, fmt.Errorf("%s", "cannot get api server")
 
+}
+
+func globalConfig(contrailClient *contrail.Client, config *GlobalConfig) error {
+	return nil
 }
 
 func controlNodes(contrailClient *contrail.Client, nodeList []*ControlNode) error {
