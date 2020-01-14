@@ -1076,12 +1076,37 @@ func vrouterNodes(contrailClient *contrail.Client, nodeList []*VrouterNode) erro
 func (c *VrouterNode) Create(nodeList []*VrouterNode, nodeName string, contrailClient *contrail.Client) error {
 	for _, node := range nodeList {
 		if node.Hostname == nodeName {
-			vncNode := &contrailTypes.VirtualRouter{}
-			vncNode.SetFQName("", []string{"default-global-system-config", nodeName})
-			vncNode.SetVirtualRouterIpAddress(node.IPAddress)
-			err := contrailClient.Create(vncNode)
+			gscObjects := []*contrailTypes.GlobalSystemConfig{}
+			gscObjectsList, err := contrailClient.List("global-system-config")
 			if err != nil {
 				return err
+			}
+
+			if len(gscObjectsList) == 0 {
+				fmt.Println("no gscObject")
+			}
+
+			for _, gscObject := range gscObjectsList {
+				obj, err := contrailClient.ReadListResult("global-system-config", &gscObject)
+				if err != nil {
+					return err
+				}
+				gscObjects = append(gscObjects, obj.(*contrailTypes.GlobalSystemConfig))
+			}
+			gscObject := &contrailTypes.GlobalSystemConfig{}
+			if len(gscObjects) > 0 {
+				for _, gsc := range gscObjects {
+					gscObject = gsc
+					vncNode := &contrailTypes.VirtualRouter{}
+					vncNode.SetFQName("", []string{"default-global-system-config", nodeName})
+					vncNode.SetVirtualRouterIpAddress(node.IPAddress)
+					vncNode.SetParent(gscObject)
+					err := contrailClient.Create(vncNode)
+					if err != nil {
+						return err
+					}
+					return nil
+				}
 			}
 		}
 	}
