@@ -18,6 +18,7 @@ const (
 	service_template_annotations
 	service_template_display_name
 	service_template_service_appliance_set_refs
+	service_template_tag_refs
 	service_template_service_instance_back_refs
 	service_template_max_
 )
@@ -31,6 +32,7 @@ type ServiceTemplate struct {
 	annotations KeyValuePairs
 	display_name string
 	service_appliance_set_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	service_instance_back_refs contrail.ReferenceList
         valid [service_template_max_] bool
         modified [service_template_max_] bool
@@ -221,6 +223,91 @@ func (obj *ServiceTemplate) SetServiceApplianceSetList(
 }
 
 
+func (obj *ServiceTemplate) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[service_template_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ServiceTemplate) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *ServiceTemplate) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[service_template_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[service_template_tag_refs] = true
+        return nil
+}
+
+func (obj *ServiceTemplate) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[service_template_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[service_template_tag_refs] = true
+        return nil
+}
+
+func (obj *ServiceTemplate) ClearTag() {
+        if obj.valid[service_template_tag_refs] &&
+           !obj.modified[service_template_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[service_template_tag_refs] = true
+        obj.modified[service_template_tag_refs] = true
+}
+
+func (obj *ServiceTemplate) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *ServiceTemplate) readServiceInstanceBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[service_template_service_instance_back_refs] {
@@ -312,6 +399,15 @@ func (obj *ServiceTemplate) MarshalJSON() ([]byte, error) {
                 msg["service_appliance_set_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -367,6 +463,12 @@ func (obj *ServiceTemplate) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.service_appliance_set_refs)
                         if err == nil {
                                 obj.valid[service_template_service_appliance_set_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[service_template_tag_refs] = true
                         }
                         break
                 case "service_instance_back_refs":
@@ -465,6 +567,26 @@ func (obj *ServiceTemplate) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[service_template_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -477,6 +599,18 @@ func (obj *ServiceTemplate) UpdateReferences() error {
                         obj, "service-appliance-set",
                         obj.service_appliance_set_refs,
                         obj.baseMap["service-appliance-set"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[service_template_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

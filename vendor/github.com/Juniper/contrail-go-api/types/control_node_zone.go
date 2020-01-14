@@ -15,6 +15,7 @@ const (
 	control_node_zone_perms2
 	control_node_zone_annotations
 	control_node_zone_display_name
+	control_node_zone_tag_refs
 	control_node_zone_bgp_as_a_service_back_refs
 	control_node_zone_bgp_router_back_refs
 	control_node_zone_max_
@@ -26,6 +27,7 @@ type ControlNodeZone struct {
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
+	tag_refs contrail.ReferenceList
 	bgp_as_a_service_back_refs contrail.ReferenceList
 	bgp_router_back_refs contrail.ReferenceList
         valid [control_node_zone_max_] bool
@@ -114,6 +116,91 @@ func (obj *ControlNodeZone) SetDisplayName(value string) {
         obj.modified[control_node_zone_display_name] = true
 }
 
+func (obj *ControlNodeZone) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[control_node_zone_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ControlNodeZone) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *ControlNodeZone) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[control_node_zone_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[control_node_zone_tag_refs] = true
+        return nil
+}
+
+func (obj *ControlNodeZone) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[control_node_zone_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[control_node_zone_tag_refs] = true
+        return nil
+}
+
+func (obj *ControlNodeZone) ClearTag() {
+        if obj.valid[control_node_zone_tag_refs] &&
+           !obj.modified[control_node_zone_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[control_node_zone_tag_refs] = true
+        obj.modified[control_node_zone_tag_refs] = true
+}
+
+func (obj *ControlNodeZone) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *ControlNodeZone) readBgpAsAServiceBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[control_node_zone_bgp_as_a_service_back_refs] {
@@ -198,6 +285,15 @@ func (obj *ControlNodeZone) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -235,6 +331,12 @@ func (obj *ControlNodeZone) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[control_node_zone_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[control_node_zone_tag_refs] = true
                         }
                         break
                 case "bgp_router_back_refs":
@@ -320,10 +422,42 @@ func (obj *ControlNodeZone) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[control_node_zone_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *ControlNodeZone) UpdateReferences() error {
+
+        if obj.modified[control_node_zone_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

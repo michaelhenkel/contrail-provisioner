@@ -20,6 +20,7 @@ const (
 	network_ipam_annotations
 	network_ipam_display_name
 	network_ipam_virtual_DNS_refs
+	network_ipam_tag_refs
 	network_ipam_virtual_network_back_refs
 	network_ipam_virtual_router_back_refs
 	network_ipam_instance_ip_back_refs
@@ -37,6 +38,7 @@ type NetworkIpam struct {
 	annotations KeyValuePairs
 	display_name string
 	virtual_DNS_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	virtual_network_back_refs contrail.ReferenceList
 	virtual_router_back_refs contrail.ReferenceList
 	instance_ip_back_refs contrail.ReferenceList
@@ -247,6 +249,91 @@ func (obj *NetworkIpam) SetVirtualDnsList(
 }
 
 
+func (obj *NetworkIpam) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[network_ipam_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *NetworkIpam) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *NetworkIpam) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[network_ipam_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[network_ipam_tag_refs] = true
+        return nil
+}
+
+func (obj *NetworkIpam) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[network_ipam_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[network_ipam_tag_refs] = true
+        return nil
+}
+
+func (obj *NetworkIpam) ClearTag() {
+        if obj.valid[network_ipam_tag_refs] &&
+           !obj.modified[network_ipam_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[network_ipam_tag_refs] = true
+        obj.modified[network_ipam_tag_refs] = true
+}
+
+func (obj *NetworkIpam) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *NetworkIpam) readVirtualNetworkBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[network_ipam_virtual_network_back_refs] {
@@ -396,6 +483,15 @@ func (obj *NetworkIpam) MarshalJSON() ([]byte, error) {
                 msg["virtual_DNS_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -463,6 +559,12 @@ func (obj *NetworkIpam) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.virtual_DNS_refs)
                         if err == nil {
                                 obj.valid[network_ipam_virtual_DNS_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[network_ipam_tag_refs] = true
                         }
                         break
                 case "instance_ip_back_refs":
@@ -629,6 +731,26 @@ func (obj *NetworkIpam) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[network_ipam_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -641,6 +763,18 @@ func (obj *NetworkIpam) UpdateReferences() error {
                         obj, "virtual-DNS",
                         obj.virtual_DNS_refs,
                         obj.baseMap["virtual-DNS"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[network_ipam_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

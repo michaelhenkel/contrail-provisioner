@@ -11,21 +11,29 @@ import (
 )
 
 const (
-	routing_policy_id_perms = iota
+	routing_policy_routing_policy_entries = iota
+	routing_policy_id_perms
 	routing_policy_perms2
 	routing_policy_annotations
 	routing_policy_display_name
 	routing_policy_service_instance_refs
+	routing_policy_routing_instance_refs
+	routing_policy_tag_refs
+	routing_policy_virtual_network_back_refs
 	routing_policy_max_
 )
 
 type RoutingPolicy struct {
         contrail.ObjectBase
+	routing_policy_entries PolicyStatementType
 	id_perms IdPermsType
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
 	service_instance_refs contrail.ReferenceList
+	routing_instance_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
+	virtual_network_back_refs contrail.ReferenceList
         valid [routing_policy_max_] bool
         modified [routing_policy_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -75,6 +83,15 @@ func (obj *RoutingPolicy) UpdateDone() {
         obj.baseMap = nil
 }
 
+
+func (obj *RoutingPolicy) GetRoutingPolicyEntries() PolicyStatementType {
+        return obj.routing_policy_entries
+}
+
+func (obj *RoutingPolicy) SetRoutingPolicyEntries(value *PolicyStatementType) {
+        obj.routing_policy_entries = *value
+        obj.modified[routing_policy_routing_policy_entries] = true
+}
 
 func (obj *RoutingPolicy) GetIdPerms() IdPermsType {
         return obj.id_perms
@@ -197,12 +214,211 @@ func (obj *RoutingPolicy) SetServiceInstanceList(
 }
 
 
+func (obj *RoutingPolicy) readRoutingInstanceRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[routing_policy_routing_instance_refs] {
+                err := obj.GetField(obj, "routing_instance_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *RoutingPolicy) GetRoutingInstanceRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readRoutingInstanceRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.routing_instance_refs, nil
+}
+
+func (obj *RoutingPolicy) AddRoutingInstance(
+        rhs *RoutingInstance, data RoutingPolicyType) error {
+        err := obj.readRoutingInstanceRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[routing_policy_routing_instance_refs] {
+                obj.storeReferenceBase("routing-instance", obj.routing_instance_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), data}
+        obj.routing_instance_refs = append(obj.routing_instance_refs, ref)
+        obj.modified[routing_policy_routing_instance_refs] = true
+        return nil
+}
+
+func (obj *RoutingPolicy) DeleteRoutingInstance(uuid string) error {
+        err := obj.readRoutingInstanceRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[routing_policy_routing_instance_refs] {
+                obj.storeReferenceBase("routing-instance", obj.routing_instance_refs)
+        }
+
+        for i, ref := range obj.routing_instance_refs {
+                if ref.Uuid == uuid {
+                        obj.routing_instance_refs = append(
+                                obj.routing_instance_refs[:i],
+                                obj.routing_instance_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[routing_policy_routing_instance_refs] = true
+        return nil
+}
+
+func (obj *RoutingPolicy) ClearRoutingInstance() {
+        if obj.valid[routing_policy_routing_instance_refs] &&
+           !obj.modified[routing_policy_routing_instance_refs] {
+                obj.storeReferenceBase("routing-instance", obj.routing_instance_refs)
+        }
+        obj.routing_instance_refs = make([]contrail.Reference, 0)
+        obj.valid[routing_policy_routing_instance_refs] = true
+        obj.modified[routing_policy_routing_instance_refs] = true
+}
+
+func (obj *RoutingPolicy) SetRoutingInstanceList(
+        refList []contrail.ReferencePair) {
+        obj.ClearRoutingInstance()
+        obj.routing_instance_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.routing_instance_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *RoutingPolicy) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[routing_policy_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *RoutingPolicy) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *RoutingPolicy) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[routing_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[routing_policy_tag_refs] = true
+        return nil
+}
+
+func (obj *RoutingPolicy) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[routing_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[routing_policy_tag_refs] = true
+        return nil
+}
+
+func (obj *RoutingPolicy) ClearTag() {
+        if obj.valid[routing_policy_tag_refs] &&
+           !obj.modified[routing_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[routing_policy_tag_refs] = true
+        obj.modified[routing_policy_tag_refs] = true
+}
+
+func (obj *RoutingPolicy) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *RoutingPolicy) readVirtualNetworkBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[routing_policy_virtual_network_back_refs] {
+                err := obj.GetField(obj, "virtual_network_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *RoutingPolicy) GetVirtualNetworkBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readVirtualNetworkBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.virtual_network_back_refs, nil
+}
+
 func (obj *RoutingPolicy) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
         err := obj.MarshalCommon(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[routing_policy_routing_policy_entries] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.routing_policy_entries)
+                if err != nil {
+                        return nil, err
+                }
+                msg["routing_policy_entries"] = &value
         }
 
         if obj.modified[routing_policy_id_perms] {
@@ -250,6 +466,24 @@ func (obj *RoutingPolicy) MarshalJSON() ([]byte, error) {
                 msg["service_instance_refs"] = &value
         }
 
+        if len(obj.routing_instance_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.routing_instance_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["routing_instance_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -265,6 +499,12 @@ func (obj *RoutingPolicy) UnmarshalJSON(body []byte) error {
         }
         for key, value := range m {
                 switch key {
+                case "routing_policy_entries":
+                        err = json.Unmarshal(value, &obj.routing_policy_entries)
+                        if err == nil {
+                                obj.valid[routing_policy_routing_policy_entries] = true
+                        }
+                        break
                 case "id_perms":
                         err = json.Unmarshal(value, &obj.id_perms)
                         if err == nil {
@@ -287,6 +527,12 @@ func (obj *RoutingPolicy) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[routing_policy_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[routing_policy_tag_refs] = true
                         }
                         break
                 case "service_instance_refs": {
@@ -314,6 +560,56 @@ func (obj *RoutingPolicy) UnmarshalJSON(body []byte) error {
                         }
                         break
                 }
+                case "routing_instance_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr RoutingPolicyType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[routing_policy_routing_instance_refs] = true
+                        obj.routing_instance_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.routing_instance_refs = append(obj.routing_instance_refs, ref)
+                        }
+                        break
+                }
+                case "virtual_network_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr RoutingPolicyType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[routing_policy_virtual_network_back_refs] = true
+                        obj.virtual_network_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.virtual_network_back_refs = append(obj.virtual_network_back_refs, ref)
+                        }
+                        break
+                }
                 }
                 if err != nil {
                         return err
@@ -328,6 +624,15 @@ func (obj *RoutingPolicy) UpdateObject() ([]byte, error) {
         err := obj.MarshalId(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[routing_policy_routing_policy_entries] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.routing_policy_entries)
+                if err != nil {
+                        return nil, err
+                }
+                msg["routing_policy_entries"] = &value
         }
 
         if obj.modified[routing_policy_id_perms] {
@@ -386,6 +691,46 @@ func (obj *RoutingPolicy) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[routing_policy_routing_instance_refs] {
+                if len(obj.routing_instance_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["routing_instance_refs"] = &value
+                } else if !obj.hasReferenceBase("routing-instance") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.routing_instance_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["routing_instance_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[routing_policy_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -398,6 +743,30 @@ func (obj *RoutingPolicy) UpdateReferences() error {
                         obj, "service-instance",
                         obj.service_instance_refs,
                         obj.baseMap["service-instance"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[routing_policy_routing_instance_refs] &&
+           len(obj.routing_instance_refs) > 0 &&
+           obj.hasReferenceBase("routing-instance") {
+                err := obj.UpdateReference(
+                        obj, "routing-instance",
+                        obj.routing_instance_refs,
+                        obj.baseMap["routing-instance"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[routing_policy_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

@@ -11,23 +11,31 @@ import (
 )
 
 const (
-	customer_attachment_id_perms = iota
+	customer_attachment_attachment_address = iota
+	customer_attachment_id_perms
 	customer_attachment_perms2
 	customer_attachment_annotations
 	customer_attachment_display_name
 	customer_attachment_virtual_machine_interface_refs
 	customer_attachment_floating_ip_refs
+	customer_attachment_routing_instance_refs
+	customer_attachment_provider_attachment_refs
+	customer_attachment_tag_refs
 	customer_attachment_max_
 )
 
 type CustomerAttachment struct {
         contrail.ObjectBase
+	attachment_address AttachmentAddressType
 	id_perms IdPermsType
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
 	virtual_machine_interface_refs contrail.ReferenceList
 	floating_ip_refs contrail.ReferenceList
+	routing_instance_refs contrail.ReferenceList
+	provider_attachment_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
         valid [customer_attachment_max_] bool
         modified [customer_attachment_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -77,6 +85,15 @@ func (obj *CustomerAttachment) UpdateDone() {
         obj.baseMap = nil
 }
 
+
+func (obj *CustomerAttachment) GetAttachmentAddress() AttachmentAddressType {
+        return obj.attachment_address
+}
+
+func (obj *CustomerAttachment) SetAttachmentAddress(value *AttachmentAddressType) {
+        obj.attachment_address = *value
+        obj.modified[customer_attachment_attachment_address] = true
+}
 
 func (obj *CustomerAttachment) GetIdPerms() IdPermsType {
         return obj.id_perms
@@ -284,12 +301,106 @@ func (obj *CustomerAttachment) SetFloatingIpList(
 }
 
 
+func (obj *CustomerAttachment) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[customer_attachment_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *CustomerAttachment) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *CustomerAttachment) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[customer_attachment_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[customer_attachment_tag_refs] = true
+        return nil
+}
+
+func (obj *CustomerAttachment) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[customer_attachment_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[customer_attachment_tag_refs] = true
+        return nil
+}
+
+func (obj *CustomerAttachment) ClearTag() {
+        if obj.valid[customer_attachment_tag_refs] &&
+           !obj.modified[customer_attachment_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[customer_attachment_tag_refs] = true
+        obj.modified[customer_attachment_tag_refs] = true
+}
+
+func (obj *CustomerAttachment) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *CustomerAttachment) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
         err := obj.MarshalCommon(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[customer_attachment_attachment_address] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.attachment_address)
+                if err != nil {
+                        return nil, err
+                }
+                msg["attachment_address"] = &value
         }
 
         if obj.modified[customer_attachment_id_perms] {
@@ -346,6 +457,15 @@ func (obj *CustomerAttachment) MarshalJSON() ([]byte, error) {
                 msg["floating_ip_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -361,6 +481,12 @@ func (obj *CustomerAttachment) UnmarshalJSON(body []byte) error {
         }
         for key, value := range m {
                 switch key {
+                case "attachment_address":
+                        err = json.Unmarshal(value, &obj.attachment_address)
+                        if err == nil {
+                                obj.valid[customer_attachment_attachment_address] = true
+                        }
+                        break
                 case "id_perms":
                         err = json.Unmarshal(value, &obj.id_perms)
                         if err == nil {
@@ -397,6 +523,43 @@ func (obj *CustomerAttachment) UnmarshalJSON(body []byte) error {
                                 obj.valid[customer_attachment_floating_ip_refs] = true
                         }
                         break
+                case "routing_instance_refs":
+                        err = json.Unmarshal(value, &obj.routing_instance_refs)
+                        if err == nil {
+                                obj.valid[customer_attachment_routing_instance_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[customer_attachment_tag_refs] = true
+                        }
+                        break
+                case "provider_attachment_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr AttachmentInfoType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[customer_attachment_provider_attachment_refs] = true
+                        obj.provider_attachment_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.provider_attachment_refs = append(obj.provider_attachment_refs, ref)
+                        }
+                        break
+                }
                 }
                 if err != nil {
                         return err
@@ -411,6 +574,15 @@ func (obj *CustomerAttachment) UpdateObject() ([]byte, error) {
         err := obj.MarshalId(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[customer_attachment_attachment_address] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.attachment_address)
+                if err != nil {
+                        return nil, err
+                }
+                msg["attachment_address"] = &value
         }
 
         if obj.modified[customer_attachment_id_perms] {
@@ -489,6 +661,26 @@ func (obj *CustomerAttachment) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[customer_attachment_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -513,6 +705,18 @@ func (obj *CustomerAttachment) UpdateReferences() error {
                         obj, "floating-ip",
                         obj.floating_ip_refs,
                         obj.baseMap["floating-ip"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[customer_attachment_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

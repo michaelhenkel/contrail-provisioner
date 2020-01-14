@@ -17,6 +17,7 @@ const (
 	subnet_annotations
 	subnet_display_name
 	subnet_virtual_machine_interface_refs
+	subnet_tag_refs
 	subnet_max_
 )
 
@@ -28,6 +29,7 @@ type Subnet struct {
 	annotations KeyValuePairs
 	display_name string
 	virtual_machine_interface_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
         valid [subnet_max_] bool
         modified [subnet_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -208,6 +210,91 @@ func (obj *Subnet) SetVirtualMachineInterfaceList(
 }
 
 
+func (obj *Subnet) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[subnet_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *Subnet) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *Subnet) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[subnet_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[subnet_tag_refs] = true
+        return nil
+}
+
+func (obj *Subnet) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[subnet_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[subnet_tag_refs] = true
+        return nil
+}
+
+func (obj *Subnet) ClearTag() {
+        if obj.valid[subnet_tag_refs] &&
+           !obj.modified[subnet_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[subnet_tag_refs] = true
+        obj.modified[subnet_tag_refs] = true
+}
+
+func (obj *Subnet) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *Subnet) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -270,6 +357,15 @@ func (obj *Subnet) MarshalJSON() ([]byte, error) {
                 msg["virtual_machine_interface_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -319,6 +415,12 @@ func (obj *Subnet) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.virtual_machine_interface_refs)
                         if err == nil {
                                 obj.valid[subnet_virtual_machine_interface_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[subnet_tag_refs] = true
                         }
                         break
                 }
@@ -402,6 +504,26 @@ func (obj *Subnet) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[subnet_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -414,6 +536,18 @@ func (obj *Subnet) UpdateReferences() error {
                         obj, "virtual-machine-interface",
                         obj.virtual_machine_interface_refs,
                         obj.baseMap["virtual-machine-interface"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[subnet_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

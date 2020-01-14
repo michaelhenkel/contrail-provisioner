@@ -11,22 +11,28 @@ import (
 )
 
 const (
-	logical_interface_id_perms = iota
+	logical_interface_logical_interface_vlan_tag = iota
+	logical_interface_logical_interface_type
+	logical_interface_id_perms
 	logical_interface_perms2
 	logical_interface_annotations
 	logical_interface_display_name
 	logical_interface_virtual_machine_interface_refs
+	logical_interface_tag_refs
 	logical_interface_instance_ip_back_refs
 	logical_interface_max_
 )
 
 type LogicalInterface struct {
         contrail.ObjectBase
+	logical_interface_vlan_tag int
+	logical_interface_type string
 	id_perms IdPermsType
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
 	virtual_machine_interface_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	instance_ip_back_refs contrail.ReferenceList
         valid [logical_interface_max_] bool
         modified [logical_interface_max_] bool
@@ -38,12 +44,12 @@ func (obj *LogicalInterface) GetType() string {
 }
 
 func (obj *LogicalInterface) GetDefaultParent() []string {
-        name := []string{}
+        name := []string{"default-global-system-config", "default-physical-router"}
         return name
 }
 
 func (obj *LogicalInterface) GetDefaultParentType() string {
-        return ""
+        return "physical-router"
 }
 
 func (obj *LogicalInterface) SetName(name string) {
@@ -77,6 +83,24 @@ func (obj *LogicalInterface) UpdateDone() {
         obj.baseMap = nil
 }
 
+
+func (obj *LogicalInterface) GetLogicalInterfaceVlanTag() int {
+        return obj.logical_interface_vlan_tag
+}
+
+func (obj *LogicalInterface) SetLogicalInterfaceVlanTag(value int) {
+        obj.logical_interface_vlan_tag = value
+        obj.modified[logical_interface_logical_interface_vlan_tag] = true
+}
+
+func (obj *LogicalInterface) GetLogicalInterfaceType() string {
+        return obj.logical_interface_type
+}
+
+func (obj *LogicalInterface) SetLogicalInterfaceType(value string) {
+        obj.logical_interface_type = value
+        obj.modified[logical_interface_logical_interface_type] = true
+}
 
 func (obj *LogicalInterface) GetIdPerms() IdPermsType {
         return obj.id_perms
@@ -199,6 +223,91 @@ func (obj *LogicalInterface) SetVirtualMachineInterfaceList(
 }
 
 
+func (obj *LogicalInterface) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[logical_interface_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *LogicalInterface) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *LogicalInterface) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[logical_interface_tag_refs] = true
+        return nil
+}
+
+func (obj *LogicalInterface) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[logical_interface_tag_refs] = true
+        return nil
+}
+
+func (obj *LogicalInterface) ClearTag() {
+        if obj.valid[logical_interface_tag_refs] &&
+           !obj.modified[logical_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[logical_interface_tag_refs] = true
+        obj.modified[logical_interface_tag_refs] = true
+}
+
+func (obj *LogicalInterface) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *LogicalInterface) readInstanceIpBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[logical_interface_instance_ip_back_refs] {
@@ -225,6 +334,24 @@ func (obj *LogicalInterface) MarshalJSON() ([]byte, error) {
         err := obj.MarshalCommon(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[logical_interface_logical_interface_vlan_tag] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.logical_interface_vlan_tag)
+                if err != nil {
+                        return nil, err
+                }
+                msg["logical_interface_vlan_tag"] = &value
+        }
+
+        if obj.modified[logical_interface_logical_interface_type] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.logical_interface_type)
+                if err != nil {
+                        return nil, err
+                }
+                msg["logical_interface_type"] = &value
         }
 
         if obj.modified[logical_interface_id_perms] {
@@ -272,6 +399,15 @@ func (obj *LogicalInterface) MarshalJSON() ([]byte, error) {
                 msg["virtual_machine_interface_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -287,6 +423,18 @@ func (obj *LogicalInterface) UnmarshalJSON(body []byte) error {
         }
         for key, value := range m {
                 switch key {
+                case "logical_interface_vlan_tag":
+                        err = json.Unmarshal(value, &obj.logical_interface_vlan_tag)
+                        if err == nil {
+                                obj.valid[logical_interface_logical_interface_vlan_tag] = true
+                        }
+                        break
+                case "logical_interface_type":
+                        err = json.Unmarshal(value, &obj.logical_interface_type)
+                        if err == nil {
+                                obj.valid[logical_interface_logical_interface_type] = true
+                        }
+                        break
                 case "id_perms":
                         err = json.Unmarshal(value, &obj.id_perms)
                         if err == nil {
@@ -317,6 +465,12 @@ func (obj *LogicalInterface) UnmarshalJSON(body []byte) error {
                                 obj.valid[logical_interface_virtual_machine_interface_refs] = true
                         }
                         break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[logical_interface_tag_refs] = true
+                        }
+                        break
                 case "instance_ip_back_refs":
                         err = json.Unmarshal(value, &obj.instance_ip_back_refs)
                         if err == nil {
@@ -337,6 +491,24 @@ func (obj *LogicalInterface) UpdateObject() ([]byte, error) {
         err := obj.MarshalId(msg)
         if err != nil {
                 return nil, err
+        }
+
+        if obj.modified[logical_interface_logical_interface_vlan_tag] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.logical_interface_vlan_tag)
+                if err != nil {
+                        return nil, err
+                }
+                msg["logical_interface_vlan_tag"] = &value
+        }
+
+        if obj.modified[logical_interface_logical_interface_type] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.logical_interface_type)
+                if err != nil {
+                        return nil, err
+                }
+                msg["logical_interface_type"] = &value
         }
 
         if obj.modified[logical_interface_id_perms] {
@@ -395,6 +567,26 @@ func (obj *LogicalInterface) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[logical_interface_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -407,6 +599,18 @@ func (obj *LogicalInterface) UpdateReferences() error {
                         obj, "virtual-machine-interface",
                         obj.virtual_machine_interface_refs,
                         obj.baseMap["virtual-machine-interface"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[logical_interface_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

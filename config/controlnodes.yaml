@@ -1,9 +1,6 @@
-- ipAddress: 192.168.2.125
+- ipAddress: 192.168.2.101
+  hostname: kvm2-eth2.local
+- ipAddress: 192.168.2.102
   hostname: kvm3-eth2.local
-  asn: 12345
-- ipAddress: 192.168.2.100
-  hostname: kvm1-eth2.local
-  asn: 64518
-  #- ipAddress: 192.168.2.101
-  #hostname: kvm2-eth2.local
-  #asn: 23445
+  #- ipAddress: 192.168.2.100
+  #hostname: kvm1-eth2.local

@@ -53,12 +53,21 @@ const (
 	virtual_network_route_table_refs
 	virtual_network_bridge_domains
 	virtual_network_multicast_policy_refs
+	virtual_network_bgpvpn_refs
+	virtual_network_intent_map_refs
+	virtual_network_routing_policy_refs
+	virtual_network_tag_refs
 	virtual_network_virtual_network_back_refs
 	virtual_network_virtual_machine_interface_back_refs
 	virtual_network_instance_ip_back_refs
 	virtual_network_physical_router_back_refs
 	virtual_network_port_tuple_back_refs
 	virtual_network_logical_router_back_refs
+	virtual_network_flow_node_back_refs
+	virtual_network_firewall_rule_back_refs
+	virtual_network_data_center_interconnect_back_refs
+	virtual_network_fabric_back_refs
+	virtual_network_host_based_service_back_refs
 	virtual_network_max_
 )
 
@@ -106,12 +115,21 @@ type VirtualNetwork struct {
 	route_table_refs contrail.ReferenceList
 	bridge_domains contrail.ReferenceList
 	multicast_policy_refs contrail.ReferenceList
+	bgpvpn_refs contrail.ReferenceList
+	intent_map_refs contrail.ReferenceList
+	routing_policy_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	virtual_network_back_refs contrail.ReferenceList
 	virtual_machine_interface_back_refs contrail.ReferenceList
 	instance_ip_back_refs contrail.ReferenceList
 	physical_router_back_refs contrail.ReferenceList
 	port_tuple_back_refs contrail.ReferenceList
 	logical_router_back_refs contrail.ReferenceList
+	flow_node_back_refs contrail.ReferenceList
+	firewall_rule_back_refs contrail.ReferenceList
+	data_center_interconnect_back_refs contrail.ReferenceList
+	fabric_back_refs contrail.ReferenceList
+	host_based_service_back_refs contrail.ReferenceList
         valid [virtual_network_max_] bool
         modified [virtual_network_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -1127,6 +1145,346 @@ func (obj *VirtualNetwork) SetMulticastPolicyList(
 }
 
 
+func (obj *VirtualNetwork) readBgpvpnRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_bgpvpn_refs] {
+                err := obj.GetField(obj, "bgpvpn_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetBgpvpnRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.bgpvpn_refs, nil
+}
+
+func (obj *VirtualNetwork) AddBgpvpn(
+        rhs *Bgpvpn) error {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.bgpvpn_refs = append(obj.bgpvpn_refs, ref)
+        obj.modified[virtual_network_bgpvpn_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) DeleteBgpvpn(uuid string) error {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+
+        for i, ref := range obj.bgpvpn_refs {
+                if ref.Uuid == uuid {
+                        obj.bgpvpn_refs = append(
+                                obj.bgpvpn_refs[:i],
+                                obj.bgpvpn_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_network_bgpvpn_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) ClearBgpvpn() {
+        if obj.valid[virtual_network_bgpvpn_refs] &&
+           !obj.modified[virtual_network_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+        obj.bgpvpn_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_network_bgpvpn_refs] = true
+        obj.modified[virtual_network_bgpvpn_refs] = true
+}
+
+func (obj *VirtualNetwork) SetBgpvpnList(
+        refList []contrail.ReferencePair) {
+        obj.ClearBgpvpn()
+        obj.bgpvpn_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.bgpvpn_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *VirtualNetwork) readIntentMapRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_intent_map_refs] {
+                err := obj.GetField(obj, "intent_map_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetIntentMapRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readIntentMapRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.intent_map_refs, nil
+}
+
+func (obj *VirtualNetwork) AddIntentMap(
+        rhs *IntentMap) error {
+        err := obj.readIntentMapRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_intent_map_refs] {
+                obj.storeReferenceBase("intent-map", obj.intent_map_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.intent_map_refs = append(obj.intent_map_refs, ref)
+        obj.modified[virtual_network_intent_map_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) DeleteIntentMap(uuid string) error {
+        err := obj.readIntentMapRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_intent_map_refs] {
+                obj.storeReferenceBase("intent-map", obj.intent_map_refs)
+        }
+
+        for i, ref := range obj.intent_map_refs {
+                if ref.Uuid == uuid {
+                        obj.intent_map_refs = append(
+                                obj.intent_map_refs[:i],
+                                obj.intent_map_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_network_intent_map_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) ClearIntentMap() {
+        if obj.valid[virtual_network_intent_map_refs] &&
+           !obj.modified[virtual_network_intent_map_refs] {
+                obj.storeReferenceBase("intent-map", obj.intent_map_refs)
+        }
+        obj.intent_map_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_network_intent_map_refs] = true
+        obj.modified[virtual_network_intent_map_refs] = true
+}
+
+func (obj *VirtualNetwork) SetIntentMapList(
+        refList []contrail.ReferencePair) {
+        obj.ClearIntentMap()
+        obj.intent_map_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.intent_map_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *VirtualNetwork) readRoutingPolicyRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_routing_policy_refs] {
+                err := obj.GetField(obj, "routing_policy_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetRoutingPolicyRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readRoutingPolicyRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.routing_policy_refs, nil
+}
+
+func (obj *VirtualNetwork) AddRoutingPolicy(
+        rhs *RoutingPolicy, data RoutingPolicyType) error {
+        err := obj.readRoutingPolicyRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_routing_policy_refs] {
+                obj.storeReferenceBase("routing-policy", obj.routing_policy_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), data}
+        obj.routing_policy_refs = append(obj.routing_policy_refs, ref)
+        obj.modified[virtual_network_routing_policy_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) DeleteRoutingPolicy(uuid string) error {
+        err := obj.readRoutingPolicyRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_routing_policy_refs] {
+                obj.storeReferenceBase("routing-policy", obj.routing_policy_refs)
+        }
+
+        for i, ref := range obj.routing_policy_refs {
+                if ref.Uuid == uuid {
+                        obj.routing_policy_refs = append(
+                                obj.routing_policy_refs[:i],
+                                obj.routing_policy_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_network_routing_policy_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) ClearRoutingPolicy() {
+        if obj.valid[virtual_network_routing_policy_refs] &&
+           !obj.modified[virtual_network_routing_policy_refs] {
+                obj.storeReferenceBase("routing-policy", obj.routing_policy_refs)
+        }
+        obj.routing_policy_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_network_routing_policy_refs] = true
+        obj.modified[virtual_network_routing_policy_refs] = true
+}
+
+func (obj *VirtualNetwork) SetRoutingPolicyList(
+        refList []contrail.ReferencePair) {
+        obj.ClearRoutingPolicy()
+        obj.routing_policy_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.routing_policy_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *VirtualNetwork) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *VirtualNetwork) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[virtual_network_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_network_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_network_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualNetwork) ClearTag() {
+        if obj.valid[virtual_network_tag_refs] &&
+           !obj.modified[virtual_network_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_network_tag_refs] = true
+        obj.modified[virtual_network_tag_refs] = true
+}
+
+func (obj *VirtualNetwork) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *VirtualNetwork) readVirtualNetworkBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[virtual_network_virtual_network_back_refs] {
@@ -1245,6 +1603,106 @@ func (obj *VirtualNetwork) GetLogicalRouterBackRefs() (
                 return nil, err
         }
         return obj.logical_router_back_refs, nil
+}
+
+func (obj *VirtualNetwork) readFlowNodeBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_flow_node_back_refs] {
+                err := obj.GetField(obj, "flow_node_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetFlowNodeBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFlowNodeBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.flow_node_back_refs, nil
+}
+
+func (obj *VirtualNetwork) readFirewallRuleBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_firewall_rule_back_refs] {
+                err := obj.GetField(obj, "firewall_rule_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetFirewallRuleBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFirewallRuleBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.firewall_rule_back_refs, nil
+}
+
+func (obj *VirtualNetwork) readDataCenterInterconnectBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_data_center_interconnect_back_refs] {
+                err := obj.GetField(obj, "data_center_interconnect_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetDataCenterInterconnectBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readDataCenterInterconnectBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.data_center_interconnect_back_refs, nil
+}
+
+func (obj *VirtualNetwork) readFabricBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_fabric_back_refs] {
+                err := obj.GetField(obj, "fabric_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetFabricBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFabricBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.fabric_back_refs, nil
+}
+
+func (obj *VirtualNetwork) readHostBasedServiceBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_network_host_based_service_back_refs] {
+                err := obj.GetField(obj, "host_based_service_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualNetwork) GetHostBasedServiceBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readHostBasedServiceBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.host_based_service_back_refs, nil
 }
 
 func (obj *VirtualNetwork) MarshalJSON() ([]byte, error) {
@@ -1588,6 +2046,42 @@ func (obj *VirtualNetwork) MarshalJSON() ([]byte, error) {
                 msg["multicast_policy_refs"] = &value
         }
 
+        if len(obj.bgpvpn_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.bgpvpn_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["bgpvpn_refs"] = &value
+        }
+
+        if len(obj.intent_map_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.intent_map_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["intent_map_refs"] = &value
+        }
+
+        if len(obj.routing_policy_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.routing_policy_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["routing_policy_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -1843,6 +2337,24 @@ func (obj *VirtualNetwork) UnmarshalJSON(body []byte) error {
                                 obj.valid[virtual_network_multicast_policy_refs] = true
                         }
                         break
+                case "bgpvpn_refs":
+                        err = json.Unmarshal(value, &obj.bgpvpn_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_bgpvpn_refs] = true
+                        }
+                        break
+                case "intent_map_refs":
+                        err = json.Unmarshal(value, &obj.intent_map_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_intent_map_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_tag_refs] = true
+                        }
+                        break
                 case "virtual_network_back_refs":
                         err = json.Unmarshal(value, &obj.virtual_network_back_refs)
                         if err == nil {
@@ -1871,6 +2383,24 @@ func (obj *VirtualNetwork) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.port_tuple_back_refs)
                         if err == nil {
                                 obj.valid[virtual_network_port_tuple_back_refs] = true
+                        }
+                        break
+                case "flow_node_back_refs":
+                        err = json.Unmarshal(value, &obj.flow_node_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_flow_node_back_refs] = true
+                        }
+                        break
+                case "firewall_rule_back_refs":
+                        err = json.Unmarshal(value, &obj.firewall_rule_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_firewall_rule_back_refs] = true
+                        }
+                        break
+                case "data_center_interconnect_back_refs":
+                        err = json.Unmarshal(value, &obj.data_center_interconnect_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_network_data_center_interconnect_back_refs] = true
                         }
                         break
                 case "network_ipam_refs": {
@@ -1923,6 +2453,31 @@ func (obj *VirtualNetwork) UnmarshalJSON(body []byte) error {
                         }
                         break
                 }
+                case "routing_policy_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr RoutingPolicyType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[virtual_network_routing_policy_refs] = true
+                        obj.routing_policy_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.routing_policy_refs = append(obj.routing_policy_refs, ref)
+                        }
+                        break
+                }
                 case "logical_router_back_refs": {
                         type ReferenceElement struct {
                                 To []string
@@ -1945,6 +2500,56 @@ func (obj *VirtualNetwork) UnmarshalJSON(body []byte) error {
                                         element.Attr,
                                 }
                                 obj.logical_router_back_refs = append(obj.logical_router_back_refs, ref)
+                        }
+                        break
+                }
+                case "fabric_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr FabricNetworkTag
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[virtual_network_fabric_back_refs] = true
+                        obj.fabric_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.fabric_back_refs = append(obj.fabric_back_refs, ref)
+                        }
+                        break
+                }
+                case "host_based_service_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr ServiceVirtualNetworkType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[virtual_network_host_based_service_back_refs] = true
+                        obj.host_based_service_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.host_based_service_back_refs = append(obj.host_based_service_back_refs, ref)
                         }
                         break
                 }
@@ -2374,6 +2979,86 @@ func (obj *VirtualNetwork) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[virtual_network_bgpvpn_refs] {
+                if len(obj.bgpvpn_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgpvpn_refs"] = &value
+                } else if !obj.hasReferenceBase("bgpvpn") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.bgpvpn_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgpvpn_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[virtual_network_intent_map_refs] {
+                if len(obj.intent_map_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["intent_map_refs"] = &value
+                } else if !obj.hasReferenceBase("intent-map") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.intent_map_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["intent_map_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[virtual_network_routing_policy_refs] {
+                if len(obj.routing_policy_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["routing_policy_refs"] = &value
+                } else if !obj.hasReferenceBase("routing-policy") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.routing_policy_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["routing_policy_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[virtual_network_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -2458,6 +3143,54 @@ func (obj *VirtualNetwork) UpdateReferences() error {
                         obj, "multicast-policy",
                         obj.multicast_policy_refs,
                         obj.baseMap["multicast-policy"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_network_bgpvpn_refs] &&
+           len(obj.bgpvpn_refs) > 0 &&
+           obj.hasReferenceBase("bgpvpn") {
+                err := obj.UpdateReference(
+                        obj, "bgpvpn",
+                        obj.bgpvpn_refs,
+                        obj.baseMap["bgpvpn"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_network_intent_map_refs] &&
+           len(obj.intent_map_refs) > 0 &&
+           obj.hasReferenceBase("intent-map") {
+                err := obj.UpdateReference(
+                        obj, "intent-map",
+                        obj.intent_map_refs,
+                        obj.baseMap["intent-map"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_network_routing_policy_refs] &&
+           len(obj.routing_policy_refs) > 0 &&
+           obj.hasReferenceBase("routing-policy") {
+                err := obj.UpdateReference(
+                        obj, "routing-policy",
+                        obj.routing_policy_refs,
+                        obj.baseMap["routing-policy"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_network_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

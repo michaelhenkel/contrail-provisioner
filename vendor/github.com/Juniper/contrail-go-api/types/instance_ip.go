@@ -32,7 +32,9 @@ const (
 	instance_ip_physical_router_refs
 	instance_ip_virtual_router_refs
 	instance_ip_logical_interface_refs
+	instance_ip_flow_node_refs
 	instance_ip_floating_ips
+	instance_ip_tag_refs
 	instance_ip_service_instance_back_refs
 	instance_ip_max_
 )
@@ -60,7 +62,9 @@ type InstanceIp struct {
 	physical_router_refs contrail.ReferenceList
 	virtual_router_refs contrail.ReferenceList
 	logical_interface_refs contrail.ReferenceList
+	flow_node_refs contrail.ReferenceList
 	floating_ips contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	service_instance_back_refs contrail.ReferenceList
         valid [instance_ip_max_] bool
         modified [instance_ip_max_] bool
@@ -777,6 +781,176 @@ func (obj *InstanceIp) SetLogicalInterfaceList(
 }
 
 
+func (obj *InstanceIp) readFlowNodeRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[instance_ip_flow_node_refs] {
+                err := obj.GetField(obj, "flow_node_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *InstanceIp) GetFlowNodeRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFlowNodeRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.flow_node_refs, nil
+}
+
+func (obj *InstanceIp) AddFlowNode(
+        rhs *FlowNode) error {
+        err := obj.readFlowNodeRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[instance_ip_flow_node_refs] {
+                obj.storeReferenceBase("flow-node", obj.flow_node_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.flow_node_refs = append(obj.flow_node_refs, ref)
+        obj.modified[instance_ip_flow_node_refs] = true
+        return nil
+}
+
+func (obj *InstanceIp) DeleteFlowNode(uuid string) error {
+        err := obj.readFlowNodeRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[instance_ip_flow_node_refs] {
+                obj.storeReferenceBase("flow-node", obj.flow_node_refs)
+        }
+
+        for i, ref := range obj.flow_node_refs {
+                if ref.Uuid == uuid {
+                        obj.flow_node_refs = append(
+                                obj.flow_node_refs[:i],
+                                obj.flow_node_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[instance_ip_flow_node_refs] = true
+        return nil
+}
+
+func (obj *InstanceIp) ClearFlowNode() {
+        if obj.valid[instance_ip_flow_node_refs] &&
+           !obj.modified[instance_ip_flow_node_refs] {
+                obj.storeReferenceBase("flow-node", obj.flow_node_refs)
+        }
+        obj.flow_node_refs = make([]contrail.Reference, 0)
+        obj.valid[instance_ip_flow_node_refs] = true
+        obj.modified[instance_ip_flow_node_refs] = true
+}
+
+func (obj *InstanceIp) SetFlowNodeList(
+        refList []contrail.ReferencePair) {
+        obj.ClearFlowNode()
+        obj.flow_node_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.flow_node_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *InstanceIp) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[instance_ip_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *InstanceIp) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *InstanceIp) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[instance_ip_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[instance_ip_tag_refs] = true
+        return nil
+}
+
+func (obj *InstanceIp) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[instance_ip_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[instance_ip_tag_refs] = true
+        return nil
+}
+
+func (obj *InstanceIp) ClearTag() {
+        if obj.valid[instance_ip_tag_refs] &&
+           !obj.modified[instance_ip_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[instance_ip_tag_refs] = true
+        obj.modified[instance_ip_tag_refs] = true
+}
+
+func (obj *InstanceIp) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *InstanceIp) readServiceInstanceBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[instance_ip_service_instance_back_refs] {
@@ -994,6 +1168,24 @@ func (obj *InstanceIp) MarshalJSON() ([]byte, error) {
                 msg["logical_interface_refs"] = &value
         }
 
+        if len(obj.flow_node_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.flow_node_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["flow_node_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -1135,10 +1327,22 @@ func (obj *InstanceIp) UnmarshalJSON(body []byte) error {
                                 obj.valid[instance_ip_logical_interface_refs] = true
                         }
                         break
+                case "flow_node_refs":
+                        err = json.Unmarshal(value, &obj.flow_node_refs)
+                        if err == nil {
+                                obj.valid[instance_ip_flow_node_refs] = true
+                        }
+                        break
                 case "floating_ips":
                         err = json.Unmarshal(value, &obj.floating_ips)
                         if err == nil {
                                 obj.valid[instance_ip_floating_ips] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[instance_ip_tag_refs] = true
                         }
                         break
                 case "service_instance_back_refs": {
@@ -1437,6 +1641,46 @@ func (obj *InstanceIp) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[instance_ip_flow_node_refs] {
+                if len(obj.flow_node_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["flow_node_refs"] = &value
+                } else if !obj.hasReferenceBase("flow-node") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.flow_node_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["flow_node_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[instance_ip_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -1509,6 +1753,30 @@ func (obj *InstanceIp) UpdateReferences() error {
                         obj, "logical-interface",
                         obj.logical_interface_refs,
                         obj.baseMap["logical-interface"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[instance_ip_flow_node_refs] &&
+           len(obj.flow_node_refs) > 0 &&
+           obj.hasReferenceBase("flow-node") {
+                err := obj.UpdateReference(
+                        obj, "flow-node",
+                        obj.flow_node_refs,
+                        obj.baseMap["flow-node"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[instance_ip_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

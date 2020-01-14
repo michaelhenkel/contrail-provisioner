@@ -17,6 +17,7 @@ const (
 	floating_ip_pool_annotations
 	floating_ip_pool_display_name
 	floating_ip_pool_floating_ips
+	floating_ip_pool_tag_refs
 	floating_ip_pool_project_back_refs
 	floating_ip_pool_max_
 )
@@ -29,6 +30,7 @@ type FloatingIpPool struct {
 	annotations KeyValuePairs
 	display_name string
 	floating_ips contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	project_back_refs contrail.ReferenceList
         valid [floating_ip_pool_max_] bool
         modified [floating_ip_pool_max_] bool
@@ -145,6 +147,91 @@ func (obj *FloatingIpPool) GetFloatingIps() (
         return obj.floating_ips, nil
 }
 
+func (obj *FloatingIpPool) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[floating_ip_pool_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *FloatingIpPool) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *FloatingIpPool) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[floating_ip_pool_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[floating_ip_pool_tag_refs] = true
+        return nil
+}
+
+func (obj *FloatingIpPool) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[floating_ip_pool_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[floating_ip_pool_tag_refs] = true
+        return nil
+}
+
+func (obj *FloatingIpPool) ClearTag() {
+        if obj.valid[floating_ip_pool_tag_refs] &&
+           !obj.modified[floating_ip_pool_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[floating_ip_pool_tag_refs] = true
+        obj.modified[floating_ip_pool_tag_refs] = true
+}
+
+func (obj *FloatingIpPool) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *FloatingIpPool) readProjectBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[floating_ip_pool_project_back_refs] {
@@ -218,6 +305,15 @@ func (obj *FloatingIpPool) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -267,6 +363,12 @@ func (obj *FloatingIpPool) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.floating_ips)
                         if err == nil {
                                 obj.valid[floating_ip_pool_floating_ips] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[floating_ip_pool_tag_refs] = true
                         }
                         break
                 case "project_back_refs":
@@ -336,10 +438,42 @@ func (obj *FloatingIpPool) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[floating_ip_pool_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *FloatingIpPool) UpdateReferences() error {
+
+        if obj.modified[floating_ip_pool_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

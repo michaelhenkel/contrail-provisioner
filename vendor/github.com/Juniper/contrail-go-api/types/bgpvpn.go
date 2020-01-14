@@ -14,10 +14,14 @@ const (
 	bgpvpn_route_target_list = iota
 	bgpvpn_import_route_target_list
 	bgpvpn_export_route_target_list
+	bgpvpn_bgpvpn_type
 	bgpvpn_id_perms
 	bgpvpn_perms2
 	bgpvpn_annotations
 	bgpvpn_display_name
+	bgpvpn_tag_refs
+	bgpvpn_virtual_network_back_refs
+	bgpvpn_logical_router_back_refs
 	bgpvpn_max_
 )
 
@@ -26,10 +30,14 @@ type Bgpvpn struct {
 	route_target_list RouteTargetList
 	import_route_target_list RouteTargetList
 	export_route_target_list RouteTargetList
+	bgpvpn_type string
 	id_perms IdPermsType
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
+	tag_refs contrail.ReferenceList
+	virtual_network_back_refs contrail.ReferenceList
+	logical_router_back_refs contrail.ReferenceList
         valid [bgpvpn_max_] bool
         modified [bgpvpn_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -40,12 +48,12 @@ func (obj *Bgpvpn) GetType() string {
 }
 
 func (obj *Bgpvpn) GetDefaultParent() []string {
-        name := []string{}
+        name := []string{"default-domain", "default-project"}
         return name
 }
 
 func (obj *Bgpvpn) GetDefaultParentType() string {
-        return ""
+        return "project"
 }
 
 func (obj *Bgpvpn) SetName(name string) {
@@ -107,6 +115,15 @@ func (obj *Bgpvpn) SetExportRouteTargetList(value *RouteTargetList) {
         obj.modified[bgpvpn_export_route_target_list] = true
 }
 
+func (obj *Bgpvpn) GetBgpvpnType() string {
+        return obj.bgpvpn_type
+}
+
+func (obj *Bgpvpn) SetBgpvpnType(value string) {
+        obj.bgpvpn_type = value
+        obj.modified[bgpvpn_bgpvpn_type] = true
+}
+
 func (obj *Bgpvpn) GetIdPerms() IdPermsType {
         return obj.id_perms
 }
@@ -143,6 +160,131 @@ func (obj *Bgpvpn) SetDisplayName(value string) {
         obj.modified[bgpvpn_display_name] = true
 }
 
+func (obj *Bgpvpn) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bgpvpn_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *Bgpvpn) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *Bgpvpn) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgpvpn_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[bgpvpn_tag_refs] = true
+        return nil
+}
+
+func (obj *Bgpvpn) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgpvpn_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[bgpvpn_tag_refs] = true
+        return nil
+}
+
+func (obj *Bgpvpn) ClearTag() {
+        if obj.valid[bgpvpn_tag_refs] &&
+           !obj.modified[bgpvpn_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[bgpvpn_tag_refs] = true
+        obj.modified[bgpvpn_tag_refs] = true
+}
+
+func (obj *Bgpvpn) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *Bgpvpn) readVirtualNetworkBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bgpvpn_virtual_network_back_refs] {
+                err := obj.GetField(obj, "virtual_network_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *Bgpvpn) GetVirtualNetworkBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readVirtualNetworkBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.virtual_network_back_refs, nil
+}
+
+func (obj *Bgpvpn) readLogicalRouterBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bgpvpn_logical_router_back_refs] {
+                err := obj.GetField(obj, "logical_router_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *Bgpvpn) GetLogicalRouterBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLogicalRouterBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.logical_router_back_refs, nil
+}
+
 func (obj *Bgpvpn) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -176,6 +318,15 @@ func (obj *Bgpvpn) MarshalJSON() ([]byte, error) {
                         return nil, err
                 }
                 msg["export_route_target_list"] = &value
+        }
+
+        if obj.modified[bgpvpn_bgpvpn_type] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.bgpvpn_type)
+                if err != nil {
+                        return nil, err
+                }
+                msg["bgpvpn_type"] = &value
         }
 
         if obj.modified[bgpvpn_id_perms] {
@@ -214,6 +365,15 @@ func (obj *Bgpvpn) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -247,6 +407,12 @@ func (obj *Bgpvpn) UnmarshalJSON(body []byte) error {
                                 obj.valid[bgpvpn_export_route_target_list] = true
                         }
                         break
+                case "bgpvpn_type":
+                        err = json.Unmarshal(value, &obj.bgpvpn_type)
+                        if err == nil {
+                                obj.valid[bgpvpn_bgpvpn_type] = true
+                        }
+                        break
                 case "id_perms":
                         err = json.Unmarshal(value, &obj.id_perms)
                         if err == nil {
@@ -269,6 +435,24 @@ func (obj *Bgpvpn) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[bgpvpn_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[bgpvpn_tag_refs] = true
+                        }
+                        break
+                case "virtual_network_back_refs":
+                        err = json.Unmarshal(value, &obj.virtual_network_back_refs)
+                        if err == nil {
+                                obj.valid[bgpvpn_virtual_network_back_refs] = true
+                        }
+                        break
+                case "logical_router_back_refs":
+                        err = json.Unmarshal(value, &obj.logical_router_back_refs)
+                        if err == nil {
+                                obj.valid[bgpvpn_logical_router_back_refs] = true
                         }
                         break
                 }
@@ -314,6 +498,15 @@ func (obj *Bgpvpn) UpdateObject() ([]byte, error) {
                 msg["export_route_target_list"] = &value
         }
 
+        if obj.modified[bgpvpn_bgpvpn_type] {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.bgpvpn_type)
+                if err != nil {
+                        return nil, err
+                }
+                msg["bgpvpn_type"] = &value
+        }
+
         if obj.modified[bgpvpn_id_perms] {
                 var value json.RawMessage
                 value, err := json.Marshal(&obj.id_perms)
@@ -350,10 +543,42 @@ func (obj *Bgpvpn) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[bgpvpn_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *Bgpvpn) UpdateReferences() error {
+
+        if obj.modified[bgpvpn_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

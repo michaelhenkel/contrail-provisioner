@@ -16,6 +16,7 @@ const (
 	network_policy_perms2
 	network_policy_annotations
 	network_policy_display_name
+	network_policy_tag_refs
 	network_policy_security_logging_object_back_refs
 	network_policy_virtual_network_back_refs
 	network_policy_max_
@@ -28,6 +29,7 @@ type NetworkPolicy struct {
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
+	tag_refs contrail.ReferenceList
 	security_logging_object_back_refs contrail.ReferenceList
 	virtual_network_back_refs contrail.ReferenceList
         valid [network_policy_max_] bool
@@ -125,6 +127,91 @@ func (obj *NetworkPolicy) SetDisplayName(value string) {
         obj.modified[network_policy_display_name] = true
 }
 
+func (obj *NetworkPolicy) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[network_policy_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *NetworkPolicy) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *NetworkPolicy) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[network_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[network_policy_tag_refs] = true
+        return nil
+}
+
+func (obj *NetworkPolicy) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[network_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[network_policy_tag_refs] = true
+        return nil
+}
+
+func (obj *NetworkPolicy) ClearTag() {
+        if obj.valid[network_policy_tag_refs] &&
+           !obj.modified[network_policy_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[network_policy_tag_refs] = true
+        obj.modified[network_policy_tag_refs] = true
+}
+
+func (obj *NetworkPolicy) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *NetworkPolicy) readSecurityLoggingObjectBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[network_policy_security_logging_object_back_refs] {
@@ -218,6 +305,15 @@ func (obj *NetworkPolicy) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -261,6 +357,12 @@ func (obj *NetworkPolicy) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[network_policy_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[network_policy_tag_refs] = true
                         }
                         break
                 case "security_logging_object_back_refs": {
@@ -374,10 +476,42 @@ func (obj *NetworkPolicy) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[network_policy_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *NetworkPolicy) UpdateReferences() error {
+
+        if obj.modified[network_policy_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

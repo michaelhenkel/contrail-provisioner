@@ -19,6 +19,7 @@ const (
 	security_group_annotations
 	security_group_display_name
 	security_group_access_control_lists
+	security_group_tag_refs
 	security_group_security_logging_object_back_refs
 	security_group_virtual_machine_interface_back_refs
 	security_group_max_
@@ -34,6 +35,7 @@ type SecurityGroup struct {
 	annotations KeyValuePairs
 	display_name string
 	access_control_lists contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	security_logging_object_back_refs contrail.ReferenceList
 	virtual_machine_interface_back_refs contrail.ReferenceList
         valid [security_group_max_] bool
@@ -169,6 +171,91 @@ func (obj *SecurityGroup) GetAccessControlLists() (
         return obj.access_control_lists, nil
 }
 
+func (obj *SecurityGroup) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[security_group_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *SecurityGroup) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *SecurityGroup) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[security_group_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[security_group_tag_refs] = true
+        return nil
+}
+
+func (obj *SecurityGroup) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[security_group_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[security_group_tag_refs] = true
+        return nil
+}
+
+func (obj *SecurityGroup) ClearTag() {
+        if obj.valid[security_group_tag_refs] &&
+           !obj.modified[security_group_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[security_group_tag_refs] = true
+        obj.modified[security_group_tag_refs] = true
+}
+
+func (obj *SecurityGroup) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *SecurityGroup) readSecurityLoggingObjectBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[security_group_security_logging_object_back_refs] {
@@ -280,6 +367,15 @@ func (obj *SecurityGroup) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -341,6 +437,12 @@ func (obj *SecurityGroup) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.access_control_lists)
                         if err == nil {
                                 obj.valid[security_group_access_control_lists] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[security_group_tag_refs] = true
                         }
                         break
                 case "virtual_machine_interface_back_refs":
@@ -453,10 +555,42 @@ func (obj *SecurityGroup) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[security_group_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *SecurityGroup) UpdateReferences() error {
+
+        if obj.modified[security_group_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

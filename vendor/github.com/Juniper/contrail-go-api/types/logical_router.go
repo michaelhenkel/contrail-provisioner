@@ -26,7 +26,10 @@ const (
 	logical_router_virtual_network_refs
 	logical_router_service_instance_refs
 	logical_router_physical_router_refs
+	logical_router_bgpvpn_refs
+	logical_router_tag_refs
 	logical_router_port_tuple_back_refs
+	logical_router_data_center_interconnect_back_refs
 	logical_router_max_
 )
 
@@ -47,7 +50,10 @@ type LogicalRouter struct {
 	virtual_network_refs contrail.ReferenceList
 	service_instance_refs contrail.ReferenceList
 	physical_router_refs contrail.ReferenceList
+	bgpvpn_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	port_tuple_back_refs contrail.ReferenceList
+	data_center_interconnect_back_refs contrail.ReferenceList
         valid [logical_router_max_] bool
         modified [logical_router_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -689,6 +695,176 @@ func (obj *LogicalRouter) SetPhysicalRouterList(
 }
 
 
+func (obj *LogicalRouter) readBgpvpnRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[logical_router_bgpvpn_refs] {
+                err := obj.GetField(obj, "bgpvpn_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *LogicalRouter) GetBgpvpnRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.bgpvpn_refs, nil
+}
+
+func (obj *LogicalRouter) AddBgpvpn(
+        rhs *Bgpvpn) error {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_router_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.bgpvpn_refs = append(obj.bgpvpn_refs, ref)
+        obj.modified[logical_router_bgpvpn_refs] = true
+        return nil
+}
+
+func (obj *LogicalRouter) DeleteBgpvpn(uuid string) error {
+        err := obj.readBgpvpnRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_router_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+
+        for i, ref := range obj.bgpvpn_refs {
+                if ref.Uuid == uuid {
+                        obj.bgpvpn_refs = append(
+                                obj.bgpvpn_refs[:i],
+                                obj.bgpvpn_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[logical_router_bgpvpn_refs] = true
+        return nil
+}
+
+func (obj *LogicalRouter) ClearBgpvpn() {
+        if obj.valid[logical_router_bgpvpn_refs] &&
+           !obj.modified[logical_router_bgpvpn_refs] {
+                obj.storeReferenceBase("bgpvpn", obj.bgpvpn_refs)
+        }
+        obj.bgpvpn_refs = make([]contrail.Reference, 0)
+        obj.valid[logical_router_bgpvpn_refs] = true
+        obj.modified[logical_router_bgpvpn_refs] = true
+}
+
+func (obj *LogicalRouter) SetBgpvpnList(
+        refList []contrail.ReferencePair) {
+        obj.ClearBgpvpn()
+        obj.bgpvpn_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.bgpvpn_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *LogicalRouter) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[logical_router_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *LogicalRouter) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *LogicalRouter) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[logical_router_tag_refs] = true
+        return nil
+}
+
+func (obj *LogicalRouter) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[logical_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[logical_router_tag_refs] = true
+        return nil
+}
+
+func (obj *LogicalRouter) ClearTag() {
+        if obj.valid[logical_router_tag_refs] &&
+           !obj.modified[logical_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[logical_router_tag_refs] = true
+        obj.modified[logical_router_tag_refs] = true
+}
+
+func (obj *LogicalRouter) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *LogicalRouter) readPortTupleBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[logical_router_port_tuple_back_refs] {
@@ -707,6 +883,26 @@ func (obj *LogicalRouter) GetPortTupleBackRefs() (
                 return nil, err
         }
         return obj.port_tuple_back_refs, nil
+}
+
+func (obj *LogicalRouter) readDataCenterInterconnectBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[logical_router_data_center_interconnect_back_refs] {
+                err := obj.GetField(obj, "data_center_interconnect_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *LogicalRouter) GetDataCenterInterconnectBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readDataCenterInterconnectBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.data_center_interconnect_back_refs, nil
 }
 
 func (obj *LogicalRouter) MarshalJSON() ([]byte, error) {
@@ -852,6 +1048,24 @@ func (obj *LogicalRouter) MarshalJSON() ([]byte, error) {
                 msg["physical_router_refs"] = &value
         }
 
+        if len(obj.bgpvpn_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.bgpvpn_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["bgpvpn_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -951,10 +1165,28 @@ func (obj *LogicalRouter) UnmarshalJSON(body []byte) error {
                                 obj.valid[logical_router_physical_router_refs] = true
                         }
                         break
+                case "bgpvpn_refs":
+                        err = json.Unmarshal(value, &obj.bgpvpn_refs)
+                        if err == nil {
+                                obj.valid[logical_router_bgpvpn_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[logical_router_tag_refs] = true
+                        }
+                        break
                 case "port_tuple_back_refs":
                         err = json.Unmarshal(value, &obj.port_tuple_back_refs)
                         if err == nil {
                                 obj.valid[logical_router_port_tuple_back_refs] = true
+                        }
+                        break
+                case "data_center_interconnect_back_refs":
+                        err = json.Unmarshal(value, &obj.data_center_interconnect_back_refs)
+                        if err == nil {
+                                obj.valid[logical_router_data_center_interconnect_back_refs] = true
                         }
                         break
                 case "virtual_network_refs": {
@@ -1199,6 +1431,46 @@ func (obj *LogicalRouter) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[logical_router_bgpvpn_refs] {
+                if len(obj.bgpvpn_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgpvpn_refs"] = &value
+                } else if !obj.hasReferenceBase("bgpvpn") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.bgpvpn_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgpvpn_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[logical_router_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -1271,6 +1543,30 @@ func (obj *LogicalRouter) UpdateReferences() error {
                         obj, "physical-router",
                         obj.physical_router_refs,
                         obj.baseMap["physical-router"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[logical_router_bgpvpn_refs] &&
+           len(obj.bgpvpn_refs) > 0 &&
+           obj.hasReferenceBase("bgpvpn") {
+                err := obj.UpdateReference(
+                        obj, "bgpvpn",
+                        obj.bgpvpn_refs,
+                        obj.baseMap["bgpvpn"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[logical_router_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

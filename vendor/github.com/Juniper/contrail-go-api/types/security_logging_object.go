@@ -19,8 +19,11 @@ const (
 	security_logging_object_display_name
 	security_logging_object_network_policy_refs
 	security_logging_object_security_group_refs
+	security_logging_object_tag_refs
 	security_logging_object_virtual_network_back_refs
 	security_logging_object_virtual_machine_interface_back_refs
+	security_logging_object_firewall_policy_back_refs
+	security_logging_object_firewall_rule_back_refs
 	security_logging_object_max_
 )
 
@@ -34,8 +37,11 @@ type SecurityLoggingObject struct {
 	display_name string
 	network_policy_refs contrail.ReferenceList
 	security_group_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	virtual_network_back_refs contrail.ReferenceList
 	virtual_machine_interface_back_refs contrail.ReferenceList
+	firewall_policy_back_refs contrail.ReferenceList
+	firewall_rule_back_refs contrail.ReferenceList
         valid [security_logging_object_max_] bool
         modified [security_logging_object_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -310,6 +316,91 @@ func (obj *SecurityLoggingObject) SetSecurityGroupList(
 }
 
 
+func (obj *SecurityLoggingObject) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[security_logging_object_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *SecurityLoggingObject) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *SecurityLoggingObject) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[security_logging_object_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[security_logging_object_tag_refs] = true
+        return nil
+}
+
+func (obj *SecurityLoggingObject) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[security_logging_object_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[security_logging_object_tag_refs] = true
+        return nil
+}
+
+func (obj *SecurityLoggingObject) ClearTag() {
+        if obj.valid[security_logging_object_tag_refs] &&
+           !obj.modified[security_logging_object_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[security_logging_object_tag_refs] = true
+        obj.modified[security_logging_object_tag_refs] = true
+}
+
+func (obj *SecurityLoggingObject) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *SecurityLoggingObject) readVirtualNetworkBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[security_logging_object_virtual_network_back_refs] {
@@ -348,6 +439,46 @@ func (obj *SecurityLoggingObject) GetVirtualMachineInterfaceBackRefs() (
                 return nil, err
         }
         return obj.virtual_machine_interface_back_refs, nil
+}
+
+func (obj *SecurityLoggingObject) readFirewallPolicyBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[security_logging_object_firewall_policy_back_refs] {
+                err := obj.GetField(obj, "firewall_policy_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *SecurityLoggingObject) GetFirewallPolicyBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFirewallPolicyBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.firewall_policy_back_refs, nil
+}
+
+func (obj *SecurityLoggingObject) readFirewallRuleBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[security_logging_object_firewall_rule_back_refs] {
+                err := obj.GetField(obj, "firewall_rule_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *SecurityLoggingObject) GetFirewallRuleBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readFirewallRuleBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.firewall_rule_back_refs, nil
 }
 
 func (obj *SecurityLoggingObject) MarshalJSON() ([]byte, error) {
@@ -430,6 +561,15 @@ func (obj *SecurityLoggingObject) MarshalJSON() ([]byte, error) {
                 msg["security_group_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -479,6 +619,12 @@ func (obj *SecurityLoggingObject) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[security_logging_object_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[security_logging_object_tag_refs] = true
                         }
                         break
                 case "virtual_network_back_refs":
@@ -540,6 +686,56 @@ func (obj *SecurityLoggingObject) UnmarshalJSON(body []byte) error {
                                         element.Attr,
                                 }
                                 obj.security_group_refs = append(obj.security_group_refs, ref)
+                        }
+                        break
+                }
+                case "firewall_policy_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr SloRateType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[security_logging_object_firewall_policy_back_refs] = true
+                        obj.firewall_policy_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.firewall_policy_back_refs = append(obj.firewall_policy_back_refs, ref)
+                        }
+                        break
+                }
+                case "firewall_rule_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr SloRateType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[security_logging_object_firewall_rule_back_refs] = true
+                        obj.firewall_rule_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.firewall_rule_back_refs = append(obj.firewall_rule_back_refs, ref)
                         }
                         break
                 }
@@ -653,6 +849,26 @@ func (obj *SecurityLoggingObject) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[security_logging_object_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -677,6 +893,18 @@ func (obj *SecurityLoggingObject) UpdateReferences() error {
                         obj, "security-group",
                         obj.security_group_refs,
                         obj.baseMap["security-group"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[security_logging_object_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

@@ -22,6 +22,7 @@ const (
 	virtual_router_virtual_machine_interfaces
 	virtual_router_sub_cluster_refs
 	virtual_router_virtual_machine_refs
+	virtual_router_tag_refs
 	virtual_router_instance_ip_back_refs
 	virtual_router_physical_router_back_refs
 	virtual_router_provider_attachment_back_refs
@@ -41,6 +42,7 @@ type VirtualRouter struct {
 	virtual_machine_interfaces contrail.ReferenceList
 	sub_cluster_refs contrail.ReferenceList
 	virtual_machine_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	instance_ip_back_refs contrail.ReferenceList
 	physical_router_back_refs contrail.ReferenceList
 	provider_attachment_back_refs contrail.ReferenceList
@@ -432,6 +434,91 @@ func (obj *VirtualRouter) SetVirtualMachineList(
 }
 
 
+func (obj *VirtualRouter) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_router_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualRouter) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *VirtualRouter) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[virtual_router_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualRouter) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_router_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualRouter) ClearTag() {
+        if obj.valid[virtual_router_tag_refs] &&
+           !obj.modified[virtual_router_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_router_tag_refs] = true
+        obj.modified[virtual_router_tag_refs] = true
+}
+
+func (obj *VirtualRouter) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *VirtualRouter) readInstanceIpBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[virtual_router_instance_ip_back_refs] {
@@ -590,6 +677,15 @@ func (obj *VirtualRouter) MarshalJSON() ([]byte, error) {
                 msg["virtual_machine_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -663,6 +759,12 @@ func (obj *VirtualRouter) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.virtual_machine_refs)
                         if err == nil {
                                 obj.valid[virtual_router_virtual_machine_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[virtual_router_tag_refs] = true
                         }
                         break
                 case "instance_ip_back_refs":
@@ -847,6 +949,26 @@ func (obj *VirtualRouter) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[virtual_router_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -883,6 +1005,18 @@ func (obj *VirtualRouter) UpdateReferences() error {
                         obj, "virtual-machine",
                         obj.virtual_machine_refs,
                         obj.baseMap["virtual-machine"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_router_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

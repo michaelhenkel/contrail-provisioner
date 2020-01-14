@@ -21,12 +21,15 @@ const (
 	service_instance_service_template_refs
 	service_instance_instance_ip_refs
 	service_instance_port_tuples
+	service_instance_tag_refs
 	service_instance_virtual_machine_back_refs
 	service_instance_service_health_check_back_refs
 	service_instance_interface_route_table_back_refs
 	service_instance_routing_policy_back_refs
 	service_instance_route_aggregate_back_refs
 	service_instance_logical_router_back_refs
+	service_instance_loadbalancer_pool_back_refs
+	service_instance_loadbalancer_back_refs
 	service_instance_max_
 )
 
@@ -42,12 +45,15 @@ type ServiceInstance struct {
 	service_template_refs contrail.ReferenceList
 	instance_ip_refs contrail.ReferenceList
 	port_tuples contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	virtual_machine_back_refs contrail.ReferenceList
 	service_health_check_back_refs contrail.ReferenceList
 	interface_route_table_back_refs contrail.ReferenceList
 	routing_policy_back_refs contrail.ReferenceList
 	route_aggregate_back_refs contrail.ReferenceList
 	logical_router_back_refs contrail.ReferenceList
+	loadbalancer_pool_back_refs contrail.ReferenceList
+	loadbalancer_back_refs contrail.ReferenceList
         valid [service_instance_max_] bool
         modified [service_instance_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -351,6 +357,91 @@ func (obj *ServiceInstance) SetInstanceIpList(
 }
 
 
+func (obj *ServiceInstance) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[service_instance_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ServiceInstance) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *ServiceInstance) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[service_instance_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[service_instance_tag_refs] = true
+        return nil
+}
+
+func (obj *ServiceInstance) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[service_instance_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[service_instance_tag_refs] = true
+        return nil
+}
+
+func (obj *ServiceInstance) ClearTag() {
+        if obj.valid[service_instance_tag_refs] &&
+           !obj.modified[service_instance_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[service_instance_tag_refs] = true
+        obj.modified[service_instance_tag_refs] = true
+}
+
+func (obj *ServiceInstance) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *ServiceInstance) readVirtualMachineBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[service_instance_virtual_machine_back_refs] {
@@ -471,6 +562,46 @@ func (obj *ServiceInstance) GetLogicalRouterBackRefs() (
         return obj.logical_router_back_refs, nil
 }
 
+func (obj *ServiceInstance) readLoadbalancerPoolBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[service_instance_loadbalancer_pool_back_refs] {
+                err := obj.GetField(obj, "loadbalancer_pool_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ServiceInstance) GetLoadbalancerPoolBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLoadbalancerPoolBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.loadbalancer_pool_back_refs, nil
+}
+
+func (obj *ServiceInstance) readLoadbalancerBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[service_instance_loadbalancer_back_refs] {
+                err := obj.GetField(obj, "loadbalancer_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ServiceInstance) GetLoadbalancerBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLoadbalancerBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.loadbalancer_back_refs, nil
+}
+
 func (obj *ServiceInstance) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -560,6 +691,15 @@ func (obj *ServiceInstance) MarshalJSON() ([]byte, error) {
                 msg["instance_ip_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -629,6 +769,12 @@ func (obj *ServiceInstance) UnmarshalJSON(body []byte) error {
                                 obj.valid[service_instance_port_tuples] = true
                         }
                         break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[service_instance_tag_refs] = true
+                        }
+                        break
                 case "virtual_machine_back_refs":
                         err = json.Unmarshal(value, &obj.virtual_machine_back_refs)
                         if err == nil {
@@ -639,6 +785,18 @@ func (obj *ServiceInstance) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.logical_router_back_refs)
                         if err == nil {
                                 obj.valid[service_instance_logical_router_back_refs] = true
+                        }
+                        break
+                case "loadbalancer_pool_back_refs":
+                        err = json.Unmarshal(value, &obj.loadbalancer_pool_back_refs)
+                        if err == nil {
+                                obj.valid[service_instance_loadbalancer_pool_back_refs] = true
+                        }
+                        break
+                case "loadbalancer_back_refs":
+                        err = json.Unmarshal(value, &obj.loadbalancer_back_refs)
+                        if err == nil {
+                                obj.valid[service_instance_loadbalancer_back_refs] = true
                         }
                         break
                 case "instance_ip_refs": {
@@ -885,6 +1043,26 @@ func (obj *ServiceInstance) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[service_instance_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -909,6 +1087,18 @@ func (obj *ServiceInstance) UpdateReferences() error {
                         obj, "instance-ip",
                         obj.instance_ip_refs,
                         obj.baseMap["instance-ip"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[service_instance_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

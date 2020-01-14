@@ -20,6 +20,7 @@ const (
 	forwarding_class_annotations
 	forwarding_class_display_name
 	forwarding_class_qos_queue_refs
+	forwarding_class_tag_refs
 	forwarding_class_max_
 )
 
@@ -34,6 +35,7 @@ type ForwardingClass struct {
 	annotations KeyValuePairs
 	display_name string
 	qos_queue_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
         valid [forwarding_class_max_] bool
         modified [forwarding_class_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -241,6 +243,91 @@ func (obj *ForwardingClass) SetQosQueueList(
 }
 
 
+func (obj *ForwardingClass) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[forwarding_class_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ForwardingClass) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *ForwardingClass) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[forwarding_class_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[forwarding_class_tag_refs] = true
+        return nil
+}
+
+func (obj *ForwardingClass) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[forwarding_class_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[forwarding_class_tag_refs] = true
+        return nil
+}
+
+func (obj *ForwardingClass) ClearTag() {
+        if obj.valid[forwarding_class_tag_refs] &&
+           !obj.modified[forwarding_class_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[forwarding_class_tag_refs] = true
+        obj.modified[forwarding_class_tag_refs] = true
+}
+
+func (obj *ForwardingClass) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *ForwardingClass) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -330,6 +417,15 @@ func (obj *ForwardingClass) MarshalJSON() ([]byte, error) {
                 msg["qos_queue_refs"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -397,6 +493,12 @@ func (obj *ForwardingClass) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.qos_queue_refs)
                         if err == nil {
                                 obj.valid[forwarding_class_qos_queue_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[forwarding_class_tag_refs] = true
                         }
                         break
                 }
@@ -507,6 +609,26 @@ func (obj *ForwardingClass) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[forwarding_class_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -519,6 +641,18 @@ func (obj *ForwardingClass) UpdateReferences() error {
                         obj, "qos-queue",
                         obj.qos_queue_refs,
                         obj.baseMap["qos-queue"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[forwarding_class_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

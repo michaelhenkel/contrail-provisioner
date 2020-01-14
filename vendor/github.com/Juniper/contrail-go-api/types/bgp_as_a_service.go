@@ -24,6 +24,8 @@ const (
 	bgp_as_a_service_control_node_zone_refs
 	bgp_as_a_service_virtual_machine_interface_refs
 	bgp_as_a_service_service_health_check_refs
+	bgp_as_a_service_bgp_router_refs
+	bgp_as_a_service_tag_refs
 	bgp_as_a_service_max_
 )
 
@@ -32,7 +34,7 @@ type BgpAsAService struct {
 	autonomous_system int
 	bgpaas_shared bool
 	bgpaas_ip_address string
-	bgpaas_session_attributes string
+	bgpaas_session_attributes BgpSessionAttributes
 	bgpaas_ipv4_mapped_ipv6_nexthop bool
 	bgpaas_suppress_route_advertisement bool
 	id_perms IdPermsType
@@ -42,6 +44,8 @@ type BgpAsAService struct {
 	control_node_zone_refs contrail.ReferenceList
 	virtual_machine_interface_refs contrail.ReferenceList
 	service_health_check_refs contrail.ReferenceList
+	bgp_router_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
         valid [bgp_as_a_service_max_] bool
         modified [bgp_as_a_service_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -119,12 +123,12 @@ func (obj *BgpAsAService) SetBgpaasIpAddress(value string) {
         obj.modified[bgp_as_a_service_bgpaas_ip_address] = true
 }
 
-func (obj *BgpAsAService) GetBgpaasSessionAttributes() string {
+func (obj *BgpAsAService) GetBgpaasSessionAttributes() BgpSessionAttributes {
         return obj.bgpaas_session_attributes
 }
 
-func (obj *BgpAsAService) SetBgpaasSessionAttributes(value string) {
-        obj.bgpaas_session_attributes = value
+func (obj *BgpAsAService) SetBgpaasSessionAttributes(value *BgpSessionAttributes) {
+        obj.bgpaas_session_attributes = *value
         obj.modified[bgp_as_a_service_bgpaas_session_attributes] = true
 }
 
@@ -437,6 +441,176 @@ func (obj *BgpAsAService) SetServiceHealthCheckList(
 }
 
 
+func (obj *BgpAsAService) readBgpRouterRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bgp_as_a_service_bgp_router_refs] {
+                err := obj.GetField(obj, "bgp_router_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *BgpAsAService) GetBgpRouterRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readBgpRouterRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.bgp_router_refs, nil
+}
+
+func (obj *BgpAsAService) AddBgpRouter(
+        rhs *BgpRouter) error {
+        err := obj.readBgpRouterRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgp_as_a_service_bgp_router_refs] {
+                obj.storeReferenceBase("bgp-router", obj.bgp_router_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.bgp_router_refs = append(obj.bgp_router_refs, ref)
+        obj.modified[bgp_as_a_service_bgp_router_refs] = true
+        return nil
+}
+
+func (obj *BgpAsAService) DeleteBgpRouter(uuid string) error {
+        err := obj.readBgpRouterRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgp_as_a_service_bgp_router_refs] {
+                obj.storeReferenceBase("bgp-router", obj.bgp_router_refs)
+        }
+
+        for i, ref := range obj.bgp_router_refs {
+                if ref.Uuid == uuid {
+                        obj.bgp_router_refs = append(
+                                obj.bgp_router_refs[:i],
+                                obj.bgp_router_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[bgp_as_a_service_bgp_router_refs] = true
+        return nil
+}
+
+func (obj *BgpAsAService) ClearBgpRouter() {
+        if obj.valid[bgp_as_a_service_bgp_router_refs] &&
+           !obj.modified[bgp_as_a_service_bgp_router_refs] {
+                obj.storeReferenceBase("bgp-router", obj.bgp_router_refs)
+        }
+        obj.bgp_router_refs = make([]contrail.Reference, 0)
+        obj.valid[bgp_as_a_service_bgp_router_refs] = true
+        obj.modified[bgp_as_a_service_bgp_router_refs] = true
+}
+
+func (obj *BgpAsAService) SetBgpRouterList(
+        refList []contrail.ReferencePair) {
+        obj.ClearBgpRouter()
+        obj.bgp_router_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.bgp_router_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *BgpAsAService) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bgp_as_a_service_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *BgpAsAService) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *BgpAsAService) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgp_as_a_service_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[bgp_as_a_service_tag_refs] = true
+        return nil
+}
+
+func (obj *BgpAsAService) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bgp_as_a_service_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[bgp_as_a_service_tag_refs] = true
+        return nil
+}
+
+func (obj *BgpAsAService) ClearTag() {
+        if obj.valid[bgp_as_a_service_tag_refs] &&
+           !obj.modified[bgp_as_a_service_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[bgp_as_a_service_tag_refs] = true
+        obj.modified[bgp_as_a_service_tag_refs] = true
+}
+
+func (obj *BgpAsAService) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *BgpAsAService) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -562,6 +736,24 @@ func (obj *BgpAsAService) MarshalJSON() ([]byte, error) {
                 msg["service_health_check_refs"] = &value
         }
 
+        if len(obj.bgp_router_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.bgp_router_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["bgp_router_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -647,6 +839,18 @@ func (obj *BgpAsAService) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.service_health_check_refs)
                         if err == nil {
                                 obj.valid[bgp_as_a_service_service_health_check_refs] = true
+                        }
+                        break
+                case "bgp_router_refs":
+                        err = json.Unmarshal(value, &obj.bgp_router_refs)
+                        if err == nil {
+                                obj.valid[bgp_as_a_service_bgp_router_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[bgp_as_a_service_tag_refs] = true
                         }
                         break
                 case "control_node_zone_refs": {
@@ -840,6 +1044,46 @@ func (obj *BgpAsAService) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[bgp_as_a_service_bgp_router_refs] {
+                if len(obj.bgp_router_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgp_router_refs"] = &value
+                } else if !obj.hasReferenceBase("bgp-router") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.bgp_router_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["bgp_router_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[bgp_as_a_service_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -876,6 +1120,30 @@ func (obj *BgpAsAService) UpdateReferences() error {
                         obj, "service-health-check",
                         obj.service_health_check_refs,
                         obj.baseMap["service-health-check"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[bgp_as_a_service_bgp_router_refs] &&
+           len(obj.bgp_router_refs) > 0 &&
+           obj.hasReferenceBase("bgp-router") {
+                err := obj.UpdateReference(
+                        obj, "bgp-router",
+                        obj.bgp_router_refs,
+                        obj.baseMap["bgp-router"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[bgp_as_a_service_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

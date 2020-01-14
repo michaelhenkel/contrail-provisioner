@@ -17,6 +17,7 @@ const (
 	virtual_DNS_annotations
 	virtual_DNS_display_name
 	virtual_DNS_virtual_DNS_records
+	virtual_DNS_tag_refs
 	virtual_DNS_network_ipam_back_refs
 	virtual_DNS_max_
 )
@@ -29,6 +30,7 @@ type VirtualDns struct {
 	annotations KeyValuePairs
 	display_name string
 	virtual_DNS_records contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	network_ipam_back_refs contrail.ReferenceList
         valid [virtual_DNS_max_] bool
         modified [virtual_DNS_max_] bool
@@ -145,6 +147,91 @@ func (obj *VirtualDns) GetVirtualDnsRecords() (
         return obj.virtual_DNS_records, nil
 }
 
+func (obj *VirtualDns) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_DNS_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualDns) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *VirtualDns) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_DNS_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[virtual_DNS_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualDns) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_DNS_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_DNS_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualDns) ClearTag() {
+        if obj.valid[virtual_DNS_tag_refs] &&
+           !obj.modified[virtual_DNS_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_DNS_tag_refs] = true
+        obj.modified[virtual_DNS_tag_refs] = true
+}
+
+func (obj *VirtualDns) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *VirtualDns) readNetworkIpamBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[virtual_DNS_network_ipam_back_refs] {
@@ -218,6 +305,15 @@ func (obj *VirtualDns) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -267,6 +363,12 @@ func (obj *VirtualDns) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.virtual_DNS_records)
                         if err == nil {
                                 obj.valid[virtual_DNS_virtual_DNS_records] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[virtual_DNS_tag_refs] = true
                         }
                         break
                 case "network_ipam_back_refs":
@@ -336,10 +438,42 @@ func (obj *VirtualDns) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[virtual_DNS_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *VirtualDns) UpdateReferences() error {
+
+        if obj.modified[virtual_DNS_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

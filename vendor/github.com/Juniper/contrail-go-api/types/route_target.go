@@ -15,7 +15,9 @@ const (
 	route_target_perms2
 	route_target_annotations
 	route_target_display_name
+	route_target_tag_refs
 	route_target_logical_router_back_refs
+	route_target_routing_instance_back_refs
 	route_target_max_
 )
 
@@ -25,7 +27,9 @@ type RouteTarget struct {
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
+	tag_refs contrail.ReferenceList
 	logical_router_back_refs contrail.ReferenceList
+	routing_instance_back_refs contrail.ReferenceList
         valid [route_target_max_] bool
         modified [route_target_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -112,6 +116,91 @@ func (obj *RouteTarget) SetDisplayName(value string) {
         obj.modified[route_target_display_name] = true
 }
 
+func (obj *RouteTarget) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[route_target_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *RouteTarget) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *RouteTarget) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[route_target_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[route_target_tag_refs] = true
+        return nil
+}
+
+func (obj *RouteTarget) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[route_target_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[route_target_tag_refs] = true
+        return nil
+}
+
+func (obj *RouteTarget) ClearTag() {
+        if obj.valid[route_target_tag_refs] &&
+           !obj.modified[route_target_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[route_target_tag_refs] = true
+        obj.modified[route_target_tag_refs] = true
+}
+
+func (obj *RouteTarget) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *RouteTarget) readLogicalRouterBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[route_target_logical_router_back_refs] {
@@ -130,6 +219,26 @@ func (obj *RouteTarget) GetLogicalRouterBackRefs() (
                 return nil, err
         }
         return obj.logical_router_back_refs, nil
+}
+
+func (obj *RouteTarget) readRoutingInstanceBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[route_target_routing_instance_back_refs] {
+                err := obj.GetField(obj, "routing_instance_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *RouteTarget) GetRoutingInstanceBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readRoutingInstanceBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.routing_instance_back_refs, nil
 }
 
 func (obj *RouteTarget) MarshalJSON() ([]byte, error) {
@@ -176,6 +285,15 @@ func (obj *RouteTarget) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -215,12 +333,43 @@ func (obj *RouteTarget) UnmarshalJSON(body []byte) error {
                                 obj.valid[route_target_display_name] = true
                         }
                         break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[route_target_tag_refs] = true
+                        }
+                        break
                 case "logical_router_back_refs":
                         err = json.Unmarshal(value, &obj.logical_router_back_refs)
                         if err == nil {
                                 obj.valid[route_target_logical_router_back_refs] = true
                         }
                         break
+                case "routing_instance_back_refs": {
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr InstanceTargetType
+                        }
+                        var array []ReferenceElement
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.valid[route_target_routing_instance_back_refs] = true
+                        obj.routing_instance_back_refs = make(contrail.ReferenceList, 0)
+                        for _, element := range array {
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.routing_instance_back_refs = append(obj.routing_instance_back_refs, ref)
+                        }
+                        break
+                }
                 }
                 if err != nil {
                         return err
@@ -273,10 +422,42 @@ func (obj *RouteTarget) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[route_target_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *RouteTarget) UpdateReferences() error {
+
+        if obj.modified[route_target_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

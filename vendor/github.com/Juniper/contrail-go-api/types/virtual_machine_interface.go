@@ -42,6 +42,9 @@ const (
 	virtual_machine_interface_interface_route_table_refs
 	virtual_machine_interface_physical_interface_refs
 	virtual_machine_interface_bridge_domain_refs
+	virtual_machine_interface_service_endpoint_refs
+	virtual_machine_interface_port_profile_refs
+	virtual_machine_interface_tag_refs
 	virtual_machine_interface_virtual_machine_interface_back_refs
 	virtual_machine_interface_instance_ip_back_refs
 	virtual_machine_interface_subnet_back_refs
@@ -51,6 +54,11 @@ const (
 	virtual_machine_interface_bgp_as_a_service_back_refs
 	virtual_machine_interface_customer_attachment_back_refs
 	virtual_machine_interface_logical_router_back_refs
+	virtual_machine_interface_loadbalancer_pool_back_refs
+	virtual_machine_interface_virtual_ip_back_refs
+	virtual_machine_interface_loadbalancer_back_refs
+	virtual_machine_interface_virtual_port_group_back_refs
+	virtual_machine_interface_link_aggregation_group_back_refs
 	virtual_machine_interface_max_
 )
 
@@ -87,6 +95,9 @@ type VirtualMachineInterface struct {
 	interface_route_table_refs contrail.ReferenceList
 	physical_interface_refs contrail.ReferenceList
 	bridge_domain_refs contrail.ReferenceList
+	service_endpoint_refs contrail.ReferenceList
+	port_profile_refs contrail.ReferenceList
+	tag_refs contrail.ReferenceList
 	virtual_machine_interface_back_refs contrail.ReferenceList
 	instance_ip_back_refs contrail.ReferenceList
 	subnet_back_refs contrail.ReferenceList
@@ -96,6 +107,11 @@ type VirtualMachineInterface struct {
 	bgp_as_a_service_back_refs contrail.ReferenceList
 	customer_attachment_back_refs contrail.ReferenceList
 	logical_router_back_refs contrail.ReferenceList
+	loadbalancer_pool_back_refs contrail.ReferenceList
+	virtual_ip_back_refs contrail.ReferenceList
+	loadbalancer_back_refs contrail.ReferenceList
+	virtual_port_group_back_refs contrail.ReferenceList
+	link_aggregation_group_back_refs contrail.ReferenceList
         valid [virtual_machine_interface_max_] bool
         modified [virtual_machine_interface_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -1413,6 +1429,261 @@ func (obj *VirtualMachineInterface) SetBridgeDomainList(
 }
 
 
+func (obj *VirtualMachineInterface) readServiceEndpointRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_service_endpoint_refs] {
+                err := obj.GetField(obj, "service_endpoint_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetServiceEndpointRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readServiceEndpointRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.service_endpoint_refs, nil
+}
+
+func (obj *VirtualMachineInterface) AddServiceEndpoint(
+        rhs *ServiceEndpoint) error {
+        err := obj.readServiceEndpointRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_service_endpoint_refs] {
+                obj.storeReferenceBase("service-endpoint", obj.service_endpoint_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.service_endpoint_refs = append(obj.service_endpoint_refs, ref)
+        obj.modified[virtual_machine_interface_service_endpoint_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) DeleteServiceEndpoint(uuid string) error {
+        err := obj.readServiceEndpointRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_service_endpoint_refs] {
+                obj.storeReferenceBase("service-endpoint", obj.service_endpoint_refs)
+        }
+
+        for i, ref := range obj.service_endpoint_refs {
+                if ref.Uuid == uuid {
+                        obj.service_endpoint_refs = append(
+                                obj.service_endpoint_refs[:i],
+                                obj.service_endpoint_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_machine_interface_service_endpoint_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) ClearServiceEndpoint() {
+        if obj.valid[virtual_machine_interface_service_endpoint_refs] &&
+           !obj.modified[virtual_machine_interface_service_endpoint_refs] {
+                obj.storeReferenceBase("service-endpoint", obj.service_endpoint_refs)
+        }
+        obj.service_endpoint_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_machine_interface_service_endpoint_refs] = true
+        obj.modified[virtual_machine_interface_service_endpoint_refs] = true
+}
+
+func (obj *VirtualMachineInterface) SetServiceEndpointList(
+        refList []contrail.ReferencePair) {
+        obj.ClearServiceEndpoint()
+        obj.service_endpoint_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.service_endpoint_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *VirtualMachineInterface) readPortProfileRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_port_profile_refs] {
+                err := obj.GetField(obj, "port_profile_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetPortProfileRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readPortProfileRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.port_profile_refs, nil
+}
+
+func (obj *VirtualMachineInterface) AddPortProfile(
+        rhs *PortProfile) error {
+        err := obj.readPortProfileRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_port_profile_refs] {
+                obj.storeReferenceBase("port-profile", obj.port_profile_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.port_profile_refs = append(obj.port_profile_refs, ref)
+        obj.modified[virtual_machine_interface_port_profile_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) DeletePortProfile(uuid string) error {
+        err := obj.readPortProfileRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_port_profile_refs] {
+                obj.storeReferenceBase("port-profile", obj.port_profile_refs)
+        }
+
+        for i, ref := range obj.port_profile_refs {
+                if ref.Uuid == uuid {
+                        obj.port_profile_refs = append(
+                                obj.port_profile_refs[:i],
+                                obj.port_profile_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_machine_interface_port_profile_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) ClearPortProfile() {
+        if obj.valid[virtual_machine_interface_port_profile_refs] &&
+           !obj.modified[virtual_machine_interface_port_profile_refs] {
+                obj.storeReferenceBase("port-profile", obj.port_profile_refs)
+        }
+        obj.port_profile_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_machine_interface_port_profile_refs] = true
+        obj.modified[virtual_machine_interface_port_profile_refs] = true
+}
+
+func (obj *VirtualMachineInterface) SetPortProfileList(
+        refList []contrail.ReferencePair) {
+        obj.ClearPortProfile()
+        obj.port_profile_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.port_profile_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
+func (obj *VirtualMachineInterface) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *VirtualMachineInterface) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[virtual_machine_interface_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[virtual_machine_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[virtual_machine_interface_tag_refs] = true
+        return nil
+}
+
+func (obj *VirtualMachineInterface) ClearTag() {
+        if obj.valid[virtual_machine_interface_tag_refs] &&
+           !obj.modified[virtual_machine_interface_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[virtual_machine_interface_tag_refs] = true
+        obj.modified[virtual_machine_interface_tag_refs] = true
+}
+
+func (obj *VirtualMachineInterface) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *VirtualMachineInterface) readVirtualMachineInterfaceBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[virtual_machine_interface_virtual_machine_interface_back_refs] {
@@ -1591,6 +1862,106 @@ func (obj *VirtualMachineInterface) GetLogicalRouterBackRefs() (
                 return nil, err
         }
         return obj.logical_router_back_refs, nil
+}
+
+func (obj *VirtualMachineInterface) readLoadbalancerPoolBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_loadbalancer_pool_back_refs] {
+                err := obj.GetField(obj, "loadbalancer_pool_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetLoadbalancerPoolBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLoadbalancerPoolBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.loadbalancer_pool_back_refs, nil
+}
+
+func (obj *VirtualMachineInterface) readVirtualIpBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_virtual_ip_back_refs] {
+                err := obj.GetField(obj, "virtual_ip_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetVirtualIpBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readVirtualIpBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.virtual_ip_back_refs, nil
+}
+
+func (obj *VirtualMachineInterface) readLoadbalancerBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_loadbalancer_back_refs] {
+                err := obj.GetField(obj, "loadbalancer_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetLoadbalancerBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLoadbalancerBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.loadbalancer_back_refs, nil
+}
+
+func (obj *VirtualMachineInterface) readVirtualPortGroupBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_virtual_port_group_back_refs] {
+                err := obj.GetField(obj, "virtual_port_group_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetVirtualPortGroupBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readVirtualPortGroupBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.virtual_port_group_back_refs, nil
+}
+
+func (obj *VirtualMachineInterface) readLinkAggregationGroupBackRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[virtual_machine_interface_link_aggregation_group_back_refs] {
+                err := obj.GetField(obj, "link_aggregation_group_back_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *VirtualMachineInterface) GetLinkAggregationGroupBackRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readLinkAggregationGroupBackRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.link_aggregation_group_back_refs, nil
 }
 
 func (obj *VirtualMachineInterface) MarshalJSON() ([]byte, error) {
@@ -1880,6 +2251,33 @@ func (obj *VirtualMachineInterface) MarshalJSON() ([]byte, error) {
                 msg["bridge_domain_refs"] = &value
         }
 
+        if len(obj.service_endpoint_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.service_endpoint_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["service_endpoint_refs"] = &value
+        }
+
+        if len(obj.port_profile_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.port_profile_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["port_profile_refs"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -2069,6 +2467,24 @@ func (obj *VirtualMachineInterface) UnmarshalJSON(body []byte) error {
                                 obj.valid[virtual_machine_interface_physical_interface_refs] = true
                         }
                         break
+                case "service_endpoint_refs":
+                        err = json.Unmarshal(value, &obj.service_endpoint_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_service_endpoint_refs] = true
+                        }
+                        break
+                case "port_profile_refs":
+                        err = json.Unmarshal(value, &obj.port_profile_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_port_profile_refs] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_tag_refs] = true
+                        }
+                        break
                 case "virtual_machine_interface_back_refs":
                         err = json.Unmarshal(value, &obj.virtual_machine_interface_back_refs)
                         if err == nil {
@@ -2121,6 +2537,36 @@ func (obj *VirtualMachineInterface) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.logical_router_back_refs)
                         if err == nil {
                                 obj.valid[virtual_machine_interface_logical_router_back_refs] = true
+                        }
+                        break
+                case "loadbalancer_pool_back_refs":
+                        err = json.Unmarshal(value, &obj.loadbalancer_pool_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_loadbalancer_pool_back_refs] = true
+                        }
+                        break
+                case "virtual_ip_back_refs":
+                        err = json.Unmarshal(value, &obj.virtual_ip_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_virtual_ip_back_refs] = true
+                        }
+                        break
+                case "loadbalancer_back_refs":
+                        err = json.Unmarshal(value, &obj.loadbalancer_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_loadbalancer_back_refs] = true
+                        }
+                        break
+                case "virtual_port_group_back_refs":
+                        err = json.Unmarshal(value, &obj.virtual_port_group_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_virtual_port_group_back_refs] = true
+                        }
+                        break
+                case "link_aggregation_group_back_refs":
+                        err = json.Unmarshal(value, &obj.link_aggregation_group_back_refs)
+                        if err == nil {
+                                obj.valid[virtual_machine_interface_link_aggregation_group_back_refs] = true
                         }
                         break
                 case "routing_instance_refs": {
@@ -2611,6 +3057,66 @@ func (obj *VirtualMachineInterface) UpdateObject() ([]byte, error) {
         }
 
 
+        if obj.modified[virtual_machine_interface_service_endpoint_refs] {
+                if len(obj.service_endpoint_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["service_endpoint_refs"] = &value
+                } else if !obj.hasReferenceBase("service-endpoint") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.service_endpoint_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["service_endpoint_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[virtual_machine_interface_port_profile_refs] {
+                if len(obj.port_profile_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["port_profile_refs"] = &value
+                } else if !obj.hasReferenceBase("port-profile") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.port_profile_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["port_profile_refs"] = &value
+                }
+        }
+
+
+        if obj.modified[virtual_machine_interface_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
@@ -2767,6 +3273,42 @@ func (obj *VirtualMachineInterface) UpdateReferences() error {
                         obj, "bridge-domain",
                         obj.bridge_domain_refs,
                         obj.baseMap["bridge-domain"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_machine_interface_service_endpoint_refs] &&
+           len(obj.service_endpoint_refs) > 0 &&
+           obj.hasReferenceBase("service-endpoint") {
+                err := obj.UpdateReference(
+                        obj, "service-endpoint",
+                        obj.service_endpoint_refs,
+                        obj.baseMap["service-endpoint"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_machine_interface_port_profile_refs] &&
+           len(obj.port_profile_refs) > 0 &&
+           obj.hasReferenceBase("port-profile") {
+                err := obj.UpdateReference(
+                        obj, "port-profile",
+                        obj.port_profile_refs,
+                        obj.baseMap["port-profile"])
+                if err != nil {
+                        return err
+                }
+        }
+
+        if obj.modified[virtual_machine_interface_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
                 if err != nil {
                         return err
                 }

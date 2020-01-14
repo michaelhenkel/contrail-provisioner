@@ -20,6 +20,7 @@ const (
 	bridge_domain_perms2
 	bridge_domain_annotations
 	bridge_domain_display_name
+	bridge_domain_tag_refs
 	bridge_domain_virtual_machine_interface_back_refs
 	bridge_domain_max_
 )
@@ -35,6 +36,7 @@ type BridgeDomain struct {
 	perms2 PermType2
 	annotations KeyValuePairs
 	display_name string
+	tag_refs contrail.ReferenceList
 	virtual_machine_interface_back_refs contrail.ReferenceList
         valid [bridge_domain_max_] bool
         modified [bridge_domain_max_] bool
@@ -167,6 +169,91 @@ func (obj *BridgeDomain) SetDisplayName(value string) {
         obj.modified[bridge_domain_display_name] = true
 }
 
+func (obj *BridgeDomain) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[bridge_domain_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *BridgeDomain) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *BridgeDomain) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bridge_domain_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[bridge_domain_tag_refs] = true
+        return nil
+}
+
+func (obj *BridgeDomain) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[bridge_domain_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[bridge_domain_tag_refs] = true
+        return nil
+}
+
+func (obj *BridgeDomain) ClearTag() {
+        if obj.valid[bridge_domain_tag_refs] &&
+           !obj.modified[bridge_domain_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[bridge_domain_tag_refs] = true
+        obj.modified[bridge_domain_tag_refs] = true
+}
+
+func (obj *BridgeDomain) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *BridgeDomain) readVirtualMachineInterfaceBackRefs() error {
         if !obj.IsTransient() &&
                 !obj.valid[bridge_domain_virtual_machine_interface_back_refs] {
@@ -276,6 +363,15 @@ func (obj *BridgeDomain) MarshalJSON() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
+        }
+
         return json.Marshal(msg)
 }
 
@@ -343,6 +439,12 @@ func (obj *BridgeDomain) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.display_name)
                         if err == nil {
                                 obj.valid[bridge_domain_display_name] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[bridge_domain_tag_refs] = true
                         }
                         break
                 case "virtual_machine_interface_back_refs": {
@@ -467,10 +569,42 @@ func (obj *BridgeDomain) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[bridge_domain_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *BridgeDomain) UpdateReferences() error {
+
+        if obj.modified[bridge_domain_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }

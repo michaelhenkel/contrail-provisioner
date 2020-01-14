@@ -17,6 +17,9 @@ const (
 	config_root_display_name
 	config_root_global_system_configs
 	config_root_domains
+	config_root_policy_managements
+	config_root_tags
+	config_root_tag_refs
 	config_root_max_
 )
 
@@ -28,6 +31,9 @@ type ConfigRoot struct {
 	display_name string
 	global_system_configs contrail.ReferenceList
 	domains contrail.ReferenceList
+	policy_managements contrail.ReferenceList
+	tags contrail.ReferenceList
+	tag_refs contrail.ReferenceList
         valid [config_root_max_] bool
         modified [config_root_max_] bool
         baseMap map[string]contrail.ReferenceList
@@ -154,6 +160,131 @@ func (obj *ConfigRoot) GetDomains() (
         return obj.domains, nil
 }
 
+func (obj *ConfigRoot) readPolicyManagements() error {
+        if !obj.IsTransient() &&
+                !obj.valid[config_root_policy_managements] {
+                err := obj.GetField(obj, "policy_managements")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ConfigRoot) GetPolicyManagements() (
+        contrail.ReferenceList, error) {
+        err := obj.readPolicyManagements()
+        if err != nil {
+                return nil, err
+        }
+        return obj.policy_managements, nil
+}
+
+func (obj *ConfigRoot) readTags() error {
+        if !obj.IsTransient() &&
+                !obj.valid[config_root_tags] {
+                err := obj.GetField(obj, "tags")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ConfigRoot) GetTags() (
+        contrail.ReferenceList, error) {
+        err := obj.readTags()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tags, nil
+}
+
+func (obj *ConfigRoot) readTagRefs() error {
+        if !obj.IsTransient() &&
+                !obj.valid[config_root_tag_refs] {
+                err := obj.GetField(obj, "tag_refs")
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
+}
+
+func (obj *ConfigRoot) GetTagRefs() (
+        contrail.ReferenceList, error) {
+        err := obj.readTagRefs()
+        if err != nil {
+                return nil, err
+        }
+        return obj.tag_refs, nil
+}
+
+func (obj *ConfigRoot) AddTag(
+        rhs *Tag) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[config_root_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), nil}
+        obj.tag_refs = append(obj.tag_refs, ref)
+        obj.modified[config_root_tag_refs] = true
+        return nil
+}
+
+func (obj *ConfigRoot) DeleteTag(uuid string) error {
+        err := obj.readTagRefs()
+        if err != nil {
+                return err
+        }
+
+        if !obj.modified[config_root_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+
+        for i, ref := range obj.tag_refs {
+                if ref.Uuid == uuid {
+                        obj.tag_refs = append(
+                                obj.tag_refs[:i],
+                                obj.tag_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified[config_root_tag_refs] = true
+        return nil
+}
+
+func (obj *ConfigRoot) ClearTag() {
+        if obj.valid[config_root_tag_refs] &&
+           !obj.modified[config_root_tag_refs] {
+                obj.storeReferenceBase("tag", obj.tag_refs)
+        }
+        obj.tag_refs = make([]contrail.Reference, 0)
+        obj.valid[config_root_tag_refs] = true
+        obj.modified[config_root_tag_refs] = true
+}
+
+func (obj *ConfigRoot) SetTagList(
+        refList []contrail.ReferencePair) {
+        obj.ClearTag()
+        obj.tag_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.tag_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
+}
+
+
 func (obj *ConfigRoot) MarshalJSON() ([]byte, error) {
         msg := map[string]*json.RawMessage {
         }
@@ -196,6 +327,15 @@ func (obj *ConfigRoot) MarshalJSON() ([]byte, error) {
                         return nil, err
                 }
                 msg["display_name"] = &value
+        }
+
+        if len(obj.tag_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.tag_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["tag_refs"] = &value
         }
 
         return json.Marshal(msg)
@@ -247,6 +387,24 @@ func (obj *ConfigRoot) UnmarshalJSON(body []byte) error {
                         err = json.Unmarshal(value, &obj.domains)
                         if err == nil {
                                 obj.valid[config_root_domains] = true
+                        }
+                        break
+                case "policy_managements":
+                        err = json.Unmarshal(value, &obj.policy_managements)
+                        if err == nil {
+                                obj.valid[config_root_policy_managements] = true
+                        }
+                        break
+                case "tags":
+                        err = json.Unmarshal(value, &obj.tags)
+                        if err == nil {
+                                obj.valid[config_root_tags] = true
+                        }
+                        break
+                case "tag_refs":
+                        err = json.Unmarshal(value, &obj.tag_refs)
+                        if err == nil {
+                                obj.valid[config_root_tag_refs] = true
                         }
                         break
                 }
@@ -301,10 +459,42 @@ func (obj *ConfigRoot) UpdateObject() ([]byte, error) {
                 msg["display_name"] = &value
         }
 
+        if obj.modified[config_root_tag_refs] {
+                if len(obj.tag_refs) == 0 {
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                } else if !obj.hasReferenceBase("tag") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.tag_refs)
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["tag_refs"] = &value
+                }
+        }
+
+
         return json.Marshal(msg)
 }
 
 func (obj *ConfigRoot) UpdateReferences() error {
+
+        if obj.modified[config_root_tag_refs] &&
+           len(obj.tag_refs) > 0 &&
+           obj.hasReferenceBase("tag") {
+                err := obj.UpdateReference(
+                        obj, "tag",
+                        obj.tag_refs,
+                        obj.baseMap["tag"])
+                if err != nil {
+                        return err
+                }
+        }
 
         return nil
 }
